@@ -49,13 +49,6 @@ dirLight.position.set(-30, 50, 30);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-const shape = new THREE.Shape();
-const size = 0.5;
-shape.moveTo(size, 0);
-for (let i = 1; i <= 6; i++) {
-  shape.lineTo(size * Math.cos((i * Math.PI) / 3), size * Math.sin((i * Math.PI) / 3));
-}
-
 const hexes: THREE.Mesh[] = [];
 coordinates.for_radius(T.cube(0, 0, 0), 3, (coord) => {
   const flatHex = new HexagonMesh();
@@ -63,7 +56,7 @@ coordinates.for_radius(T.cube(0, 0, 0), 3, (coord) => {
   line.add(flatHex);
   const planar = coord.to_planar_unit();
   line.rotateX(Math.PI / 2);
-  
+
   line.position.set(planar.x, 0, planar.y);
   scene.add(line);
   hexes.push(flatHex);
