@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import * as T from '../../types';
 import { HexagonMesh } from "./visual/hegaxon/flat";
+import Queue from "yocto-queue";
 
 const SIN60 = Math.sqrt(3) / 2;
 
@@ -156,12 +157,11 @@ export class HexMap {
     // Look for connection to the placed cell
     // If connection found, prune all other search in that direction
 
-    let paths: T.CubeLocation[][] = [];
-    let queue: T.CubeLocation[][] = [[newCellLocation]];
-    while (queue.length > 0) {
-      const path = queue[0];
-      queue.splice(0, 1);
-
+    let shortestPath: T.CubeLocation[] = [];
+    let queue = new Queue<T.CubeLocation[]>();
+    queue.enqueue([newCellLocation]);
+    while (queue.size > 0) {
+      const path = queue.dequeue()!;
       const last = path[path.length - 1];
       const coord = CubeCoordinates.from_string(last);
 
@@ -173,160 +173,49 @@ export class HexMap {
         coord.translated(CubeCoordinates.TOP_LEFT).to_string(),
         coord.translated(CubeCoordinates.TOP_RIGHT).to_string(),
       ];
-      // Check if this is a "center" cell. We simply skip center cells, because
-      // a path can be found around them. Going in center cells would help us
-      // find the shortest path, but we don't care about a short path.
-      const filledPaths = next.filter((e) => {
-        let cell = this.get_cell(e);
-        return cell?.state == T.CellState.FILLED;
-      });
-      if (filledPaths.length >= 6) {
-        console.log(`pruned center cell`);
-        continue;
-      }
 
-      // Check if one of the next cells is the target
-      let prune2nd: T.CubeLocation | undefined = undefined;
-      if (path.length > 2) {
+      // Allow only paths with at least length 4
+      if (path.length >= 4) {
         for (const n of next) {
           if (n == newCellLocation && n != last) {
-            console.log(`found path back: ${path}`);
-            paths.push(path);
-
-            // Prune all queue starting with this direction
-            prune2nd = path[1];
+            console.log(`found new shortest path: ${path}`);
+            shortestPath = path;
             break;
           }
         }
       }
-      if (prune2nd !== undefined) {
-        // Clear from queue all remaining paths that begin from this direction
-        console.log(`had ${queue.length} paths to check`);
-        queue = queue.filter((p) => p[1] != prune2nd);
-        console.log(`${queue.length} paths remain`);
-      } else {
-        // Filter out invalid paths
-        const notInPath = next.filter((e) => {
-          let cell = this.get_cell(e);
-          if (!cell) return false;
-          if (path.indexOf(e) >= 0) {
-            // console.log(`${e} already in path ${path}`);
-            return false;
-          }
-          return true;
-        });
-        console.log(`valid directions: ${notInPath.length}`);
-        const nextTrail = notInPath.filter((e) => {
-          let cell = this.get_cell(e);
-          return cell?.state == T.CellState.TRAIL;
-        });
-        for (const n of nextTrail) {
-          let newPath = [...path, n];
-          console.log(`next trail: ${newPath}`);
-          queue = [newPath, ...queue];
-        }
+      if (shortestPath.length > 0) {
+        // We definitely won't find any shorter path than this by doing BFS
+        break;
+      }
 
-        const nextFilled = notInPath.filter((e) => {
-          let cell = this.get_cell(e);
-          return cell?.state == T.CellState.FILLED;
-        });
-        for (const n of nextFilled) {
-          let newPath = [...path, n];
-          console.log(`next filled: ${newPath}`);
-          queue.push(newPath);
+      // Filter out invalid paths
+      const notInPath = next.filter((e) => {
+        let cell = this.get_cell(e);
+        if (!cell) return false;
+        if (path.indexOf(e) >= 0) {
+          // console.log(`${e} already in path ${path}`);
+          return false;
         }
+        return true;
+      });
+      console.log(`valid directions: ${notInPath.length}`);
+      const nextTrail = notInPath.filter((e) => {
+        let cell = this.get_cell(e);
+        return cell?.state == T.CellState.TRAIL;
+      });
+      for (const n of nextTrail) {
+        let newPath = [...path, n];
+        console.log(`next trail: ${newPath}`);
+        queue.enqueue(newPath);
       }
     }
 
-    for (const p of paths) {
-      console.log(`a path: ${p} with length ${p.length}`);
-      for (const c of p) {
-        this.setCell(c, {
-          state: T.CellState.FILLED,
-        });
-      }
+    for (const c of shortestPath) {
+      this.setCell(c, {
+        state: T.CellState.FILLED,
+      });
     }
-  }
-
-  private detectContour(newCellLocation: T.CubeLocation): void {
-    console.log(`detect contour begin @ ${newCellLocation}`);
-
-    const knownPaths = new Map<T.CubeLocation, T.CubeLocation[]>();
-    knownPaths.set(newCellLocation, []);
-
-    const bfs = (destination: T.CubeLocation): T.CubeLocation[][] => {
-      const queue: T.CubeLocation[][] = [[destination]];
-      const paths: T.CubeLocation[][] = [];
-
-      while (queue.length > 0) {
-        const path = queue[0];
-        const last = path[path.length - 1];
-        const coord = CubeCoordinates.from_string(last);
-
-        if (path.length > 1) {
-          const toLast = knownPaths.get(last);
-          if (toLast) {
-            // If the other path contains any other node from this path,
-            // then it's invalid as it would involve visiting a cell twice
-            const reversed = [...toLast].reverse().splice(1);
-            const intersection = path.find(
-              (e) => e != destination && reversed.find((r) => r == e) != null,
-            );
-            if (intersection != null) {
-              console.log(
-                `paths ${path} & ${reversed} did intersect at ${intersection} so it's not valid`,
-              );
-            } else {
-              console.log(`found node with path ${toLast}, joining to ${path}`);
-              // A path already exists, let's merge them together to get the final cycle
-              // return [...path, ...reversed];
-              paths.push([...path, ...reversed]);
-              queue.splice(0, 1);
-              continue;
-            }
-          } else {
-            knownPaths.set(last, path);
-          }
-        }
-
-        // Get unvisited neighbors
-        let next: T.CubeLocation[] = [
-          coord.translated(CubeCoordinates.RIGHT).to_string(),
-          coord.translated(CubeCoordinates.BOTTOM_RIGHT).to_string(),
-          coord.translated(CubeCoordinates.BOTTOM_LEFT).to_string(),
-          coord.translated(CubeCoordinates.LEFT).to_string(),
-          coord.translated(CubeCoordinates.TOP_LEFT).to_string(),
-          coord.translated(CubeCoordinates.TOP_RIGHT).to_string(),
-        ];
-        // Filter out invalid paths
-        next = next.filter((e) => {
-          if (path.indexOf(e) >= 0) {
-            console.log(`${e} already in path ${path}`);
-            return false;
-          }
-          let cell = this.get_cell(e);
-          if (!cell) return false;
-          return cell.state != T.CellState.BLANK;
-        });
-        for (const n of next) {
-          queue.push([...path, n]);
-        }
-        queue.splice(0, 1);
-      }
-
-      return paths;
-    };
-
-    const paths = bfs(newCellLocation);
-    for (const p of paths) {
-      console.log(`a path: ${p} with length ${p.length}`);
-      for (const c of p) {
-        this.setCell(c, {
-          state: T.CellState.FILLED,
-        });
-      }
-    }
-    // console.log(`final path: ${path} with length ${path?.length}`);
   }
 }
 
