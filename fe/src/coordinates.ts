@@ -141,11 +141,110 @@ export class HexMap {
       this.map.set(location, cell);
       this.callbacks.forEach((e) => e(location, cell));
       if (cell.state == T.CellState.TRAIL) {
-        this.detectContour(location);
+        this.fillConnected(location);
+        // this.detectContour(location);
       }
     } else {
       this.map.delete(location);
       this.callbacks.forEach((e) => e(location, cell));
+    }
+  }
+
+  private fillConnected(newCellLocation: T.CubeLocation): void {
+    // Filled - place at end of queue
+    // Trail - place at start of queue
+    // Look for connection to the placed cell
+    // If connection found, prune all other search in that direction
+
+    let paths: T.CubeLocation[][] = [];
+    let queue: T.CubeLocation[][] = [[newCellLocation]];
+    while (queue.length > 0) {
+      const path = queue[0];
+      queue.splice(0, 1);
+
+      const last = path[path.length - 1];
+      const coord = CubeCoordinates.from_string(last);
+
+      let next: T.CubeLocation[] = [
+        coord.translated(CubeCoordinates.RIGHT).to_string(),
+        coord.translated(CubeCoordinates.BOTTOM_RIGHT).to_string(),
+        coord.translated(CubeCoordinates.BOTTOM_LEFT).to_string(),
+        coord.translated(CubeCoordinates.LEFT).to_string(),
+        coord.translated(CubeCoordinates.TOP_LEFT).to_string(),
+        coord.translated(CubeCoordinates.TOP_RIGHT).to_string(),
+      ];
+      // Check if this is a "center" cell. We simply skip center cells, because
+      // a path can be found around them. Going in center cells would help us
+      // find the shortest path, but we don't care about a short path.
+      const filledPaths = next.filter((e) => {
+        let cell = this.get_cell(e);
+        return cell?.state == T.CellState.FILLED;
+      });
+      if (filledPaths.length >= 6) {
+        console.log(`pruned center cell`);
+        continue;
+      }
+
+      // Check if one of the next cells is the target
+      let prune2nd: T.CubeLocation | undefined = undefined;
+      if (path.length > 2) {
+        for (const n of next) {
+          if (n == newCellLocation && n != last) {
+            console.log(`found path back: ${path}`);
+            paths.push(path);
+
+            // Prune all queue starting with this direction
+            prune2nd = path[1];
+            break;
+          }
+        }
+      }
+      if (prune2nd !== undefined) {
+        // Clear from queue all remaining paths that begin from this direction
+        console.log(`had ${queue.length} paths to check`);
+        queue = queue.filter((p) => p[1] != prune2nd);
+        console.log(`${queue.length} paths remain`);
+      } else {
+        // Filter out invalid paths
+        const notInPath = next.filter((e) => {
+          let cell = this.get_cell(e);
+          if (!cell) return false;
+          if (path.indexOf(e) >= 0) {
+            // console.log(`${e} already in path ${path}`);
+            return false;
+          }
+          return true;
+        });
+        console.log(`valid directions: ${notInPath.length}`);
+        const nextTrail = notInPath.filter((e) => {
+          let cell = this.get_cell(e);
+          return cell?.state == T.CellState.TRAIL;
+        });
+        for (const n of nextTrail) {
+          let newPath = [...path, n];
+          console.log(`next trail: ${newPath}`);
+          queue = [newPath, ...queue];
+        }
+
+        const nextFilled = notInPath.filter((e) => {
+          let cell = this.get_cell(e);
+          return cell?.state == T.CellState.FILLED;
+        });
+        for (const n of nextFilled) {
+          let newPath = [...path, n];
+          console.log(`next filled: ${newPath}`);
+          queue.push(newPath);
+        }
+      }
+    }
+
+    for (const p of paths) {
+      console.log(`a path: ${p} with length ${p.length}`);
+      for (const c of p) {
+        this.setCell(c, {
+          state: T.CellState.FILLED,
+        });
+      }
     }
   }
 
