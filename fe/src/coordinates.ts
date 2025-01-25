@@ -72,7 +72,7 @@ export class CubeCoordinates {
   }
 
   public to_string(): CubeCoordStr {
-    return `${this.q},${this.r},${this.s}`;
+    return T.cube(this.q, this.r, this.s);
   }
 
   public add(other: CubeCoordinates) {

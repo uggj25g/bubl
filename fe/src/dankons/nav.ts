@@ -2,7 +2,7 @@ import "./../style.css";
 
 import * as THREE from "three";
 import * as coordinates from "../coordinates";
-import { Player } from "../player";
+import { Player, PlayerManager } from "../player";
 import * as input from "../input";
 import * as T from "../../../types";
 
@@ -12,6 +12,23 @@ const camera = new THREE.PerspectiveCamera(
   window.innerWidth / window.innerHeight,
   0.1,
   1000,
+);
+
+const rpm = new PlayerManager(scene);
+const hexmap = new coordinates.HexMap();
+
+import SOCKET from ".././paulsn/ws_client";
+SOCKET.init.then(
+  (x) => {
+    console.log("socket init!");
+    const p = x[0];
+    rpm.spawn_client_player(p);
+    const g = x[1];
+    console.log(g);
+  },
+  (err) => {
+    console.log("socket fail!", err);
+  },
 );
 
 const renderer = new THREE.WebGLRenderer();
@@ -31,28 +48,6 @@ coordinates.for_radius(T.cube(0, 0, 0), 3, (coord) => {
 camera.rotation.x = THREE.MathUtils.degToRad(-90);
 camera.position.y = 30;
 camera.position.z = 0;
-
-const player = new Player();
-scene.add(player);
-
-input.TOP_LEFT_CALLBACKS.push(() => {
-  player.move(coordinates.CubeCoordinates.TOP_LEFT);
-});
-input.TOP_RIGHT_CALLBACKS.push(() => {
-  player.move(coordinates.CubeCoordinates.TOP_RIGHT);
-});
-input.BOTTOM_LEFT_CALLBACKS.push(() => {
-  player.move(coordinates.CubeCoordinates.BOTTOM_LEFT);
-});
-input.BOTTOM_RIGHT_CALLBACKS.push(() => {
-  player.move(coordinates.CubeCoordinates.BOTTOM_RIGHT);
-});
-input.LEFT_CALLBACKS.push(() => {
-  player.move(coordinates.CubeCoordinates.LEFT);
-});
-input.RIGHT_CALLBACKS.push(() => {
-  player.move(coordinates.CubeCoordinates.RIGHT);
-});
 
 function animate() {
   // cube.rotation.x += 0.01;
