@@ -17,19 +17,28 @@ function send(ws: WebSocket, message: T.ServerMessage) {
     ws.send(encoded);
 }
 
-function sendUpdate(except?: Set<WebSocket>) {
+function sendPlayerUpdate(except?: Set<WebSocket>) {
     except ??= new Set();
     const msg: T.UpdateMessage = {
         players: Array.from(players.values()).map(conn => conn.state),
-
-        // TODO[paulsn] actually keep track of a grid and send efficient update here
-        gridDiff: T.compressGrid(GRID.cells),
+        gridDiff: [],
     };
     for (let ws of players.keys()) {
         if (except.has(ws)) continue;
         send(ws, [T.MessageType.UPDATE, msg]);
     }
     console.log('[state]', Array.from(players.values()).map(({ state }) => state));
+}
+
+GRID.onupdate = (diff: T.CellGrid) => {
+    const msg: T.UpdateMessage = {
+        players: Array.from(players.values()).map(conn => conn.state),
+        gridDiff: T.compressGrid(diff),
+    };
+    for (let ws of players.keys()) {
+        send(ws, [T.MessageType.UPDATE, msg]);
+    }
+    console.log('[grid] (ticked)')
 }
 
 function decodeMessage(msg: any): T.ClientMessage | null {
@@ -67,7 +76,7 @@ wss.on('connection', (ws) => {
             .map(conn => conn.state),
         grid: T.compressGrid(GRID.cells),
     }]);
-    sendUpdate(new Set([ws]));
+    sendPlayerUpdate(new Set([ws]));
 
     ws.on('message', (rawMsg, isBinary) => {
         if (isBinary) return;
@@ -94,7 +103,7 @@ wss.on('connection', (ws) => {
                 age: 1,
             };
             GRID.set(location, newCell);
-            sendUpdate();
+            sendPlayerUpdate();
             break;
         }
         }
@@ -102,7 +111,7 @@ wss.on('connection', (ws) => {
     ws.on('close', () => {
         console.log('[disconnect]', playerState.id);
         players.delete(ws);
-        sendUpdate();
+        sendPlayerUpdate();
     });
 });
 
