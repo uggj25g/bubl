@@ -1,4 +1,5 @@
 import * as T from '../../types';
+import { annihilate } from './grid_algo';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
 /// ... milliseconds
@@ -35,13 +36,14 @@ export const cube_is_adjacent = (a: CubeLocation, b: CubeLocation) => {
     return diffs[0] === -1 && diffs[1] === 0 && diffs[2] === 1;
 };
 
-type GCellGrid = Record<T.CubeLocation, GCell>;
-type GCell = GCellBlank | GCellTrail | GCellFilled;
-type GCellBlank = {
+export type GCellGrid = Record<T.CubeLocation, GCell>;
+export type GCellInterimGrid = Record<T.CubeLocation, GCell | GCellTombstone>;
+export type GCell = GCellBlank | GCellTrail | GCellFilled;
+export type GCellBlank = {
     location: CubeLocation,
     state: T.CellState.BLANK,
 };
-type GCellTrail = {
+export type GCellTrail = {
     location: CubeLocation,
     state: T.CellState.TRAIL,
     ownerPlayerId: T.PlayerID,
@@ -53,7 +55,7 @@ type GCellTrail = {
     /// top age when cell entered TRAIL state – used for calculating float repr
     maxAge: T.Integer,
 };
-type GCellFilled = {
+export type GCellFilled = {
     location: CubeLocation,
     state: T.CellState.FILLED,
     color: T.Integer,
@@ -86,7 +88,7 @@ function gcellToTcell(cell: GCell): T.Cell {
 }
 
 
-type GQueue = {
+export type GQueue = {
     [location: T.CubeLocation]: GCellAction,
     _count: number,
 };
@@ -100,14 +102,14 @@ const newQueue = (): GQueue => {
     return queue;
 }
 
-type GCellAction = GCellBlank | GCellTrail | GCellTombstone;
-type GCellTombstone = {
+export type GCellAction = GCellBlank | GCellTrail | GCellTombstone;
+export type GCellTombstone = {
     location: CubeLocation,
     state: 'tombstone',
     originalColor: T.Integer,
 };
 
-type GExtent = {
+export type GExtent = {
     q: [min: T.Integer, max: T.Integer],
     r: [min: T.Integer, max: T.Integer],
     s: [min: T.Integer, max: T.Integer],
@@ -281,8 +283,52 @@ export class Grid {
         if (this.#queue._count === 0) return;
         if (this.#updates === null) this.#updates = Object.create(null);
 
+        let interim = this.#cells as GCellInterimGrid;
+
+        // TODO[paulsn] O(4N)
+
+        // [1] trail growth WITHOUT connections
+        for (let [locationKey, action] of Object.entries(this.#queue)) {
+            if (typeof action === 'number') continue; // locationKey === '_count', actually unreachable
+            if (action.state !== T.CellState.TRAIL) continue; // TODO[paulsn] O(4N)
+
+            let location = locationKey as T.CubeLocation;
+            let existing = interim[location];
+            if (
+                existing
+                && existing.state === T.CellState.TRAIL
+                && existing.color !== action.color
+            ) {
+                // will need to annihilate
+                this.#queue[location] = {
+                    state: 'tombstone',
+                    location: existing.location,
+                    originalColor: existing.color,
+                };
+                continue;
+            }
+            if (existing && existing.state !== T.CellState.TRAIL) {
+                // filled cells cannot become part of the trail
+                continue;
+            }
+            interim[location] = action;
+        }
+
+        // [2] annihilation
+        for (let [locationKey, action] of Object.entries(this.#queue)) {
+            if (typeof action === 'number') continue; // locationKey === '_count', actually unreachable
+            if (action.state !== 'tombstone') continue; // TODO[paulsn] O(4N)
+
+            let location = locationKey as T.CubeLocation;
+            annihilate(str_cube(location), interim);
+        }
+
+        // [3] trail connection (TODO)
+
+        // [4] trail decay
+
         for (let [locationKey, cell] of Object.entries(this.#queue)) {
-            if (typeof cell === 'number') continue; // locationKey ===  '_count'
+            if (typeof cell === 'number') continue; // locationKey === '_count', actually unreachable
             let location = locationKey as T.CubeLocation;
 
             if (this.filled.has(location)) {
