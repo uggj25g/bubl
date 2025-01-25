@@ -25,7 +25,7 @@ function sendUpdate(except?: Set<WebSocket>) {
         if (except.has(ws)) continue;
         send(ws, [T.MessageType.UPDATE, msg]);
     }
-    console.log(Array.from(players.values()));
+    console.log('[state]', Array.from(players.values()).map(({ state }) => state));
 }
 
 function decodeMessage(msg: any): T.ClientMessage | null {
