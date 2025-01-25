@@ -84,16 +84,13 @@ window.SOCKET = SOCKET;
         }
         SOCKET.playerState = msg.players.filter(pl => pl.id !== SOCKET.self.id);
 
-        // TODO[paulsn] O(N^2) inefficient
-        outer: for (let updCell of msg.gridDiff) {
-            for (let [i, cell] of SOCKET.grid.entries()) {
-                if (T.cube_eq(cell.location, updCell.location)) {
-                    SOCKET.grid[i] = updCell;
-                    continue outer;
-                }
+        for (let [locationKey, cell] of Object.entries(msg.gridDiff)) {
+            let location = locationKey as T.CubeLocation;
+            if (cell.state === T.CellState.BLANK) {
+                delete SOCKET.grid[location];
+            } else {
+                SOCKET.grid[location] = cell;
             }
-            // previously unseen cell
-            SOCKET.grid.push(updCell);
         }
     };
 }

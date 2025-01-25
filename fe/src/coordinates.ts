@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import * as T from '../../types';
 
 const SIN60 = Math.sqrt(3) / 2;
 
@@ -11,7 +12,7 @@ const SIN60 = Math.sqrt(3) / 2;
 //   TopRight,
 // }
 
-export type CubeCoordStr = string;
+export type CubeCoordStr = T.CubeLocation;
 
 export class HexMap {
   map: Map<CubeCoordStr, number>;
