@@ -25,7 +25,6 @@ export class InputManager {
   }
 
   private onKeyDown(event: KeyboardEvent) {
-    console.log(`keydown: ${event.code}`);
     switch (event.code) {
       case "KeyW":
         this.direction.up = true;
@@ -49,7 +48,6 @@ export class InputManager {
   }
 
   private onKeyUp(event: KeyboardEvent) {
-    console.log(`keyup: ${event.code}`);
     switch (event.code) {
       case "KeyW":
         this.direction.up = false;

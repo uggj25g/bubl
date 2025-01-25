@@ -6,6 +6,7 @@ import * as input from "./input";
 
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { Timer } from "three/addons/misc/Timer.js";
+import JEASINGS, { JEasing } from "jeasings";
 export class PlayerManager {
   scene: THREE.Scene;
   inputManager: input.InputManager;
@@ -56,15 +57,26 @@ export class PlayerManager {
   }
 }
 
+interface TransitionData {
+  begin: THREE.Vector3;
+  middle: THREE.Vector3;
+  end: THREE.Vector3;
+  beginTime: number;
+  middleTime: number;
+  endTime: number;
+}
+
 export class Player extends THREE.Group {
   remote_id: T.Integer;
   color: T.Integer;
   mesh: THREE.Group = new THREE.Group();
   cubepos: coordinates.CubeCoordinates;
 
-  inputTimer: Timer | undefined;
+  timer: Timer;
   nextMoveTime: number;
   currentMoveDelta: coordinates.CubeCoordinates;
+
+  _transition: TransitionData | undefined;
 
   // TODO[paulsn] type discards energy information for client player
   constructor(state: T.RemotePlayerState, playable: boolean) {
@@ -76,23 +88,72 @@ export class Player extends THREE.Group {
     this.mesh.position.y = 1;
     this.add(this.mesh);
 
-    if (playable) {
-      this.inputTimer = new Timer();
-    }
+    this.timer = new Timer();
     this.nextMoveTime = 0;
     this.currentMoveDelta = new coordinates.CubeCoordinates();
+    this._transition = undefined;
 
     requestAnimationFrame((e) => this.animate(e));
   }
 
   public animate(timestamp: number) {
     // Handle current input direction if this is a player character
-    if (this.inputTimer) {
-      this.inputTimer.update(timestamp);
-      const time = this.inputTimer.getElapsed();
-      if (!this.currentMoveDelta.isZero() && time >= this.nextMoveTime) {
-        this.nextMoveTime = time + 0.2;
-        this.move(this.currentMoveDelta);
+    this.timer.update(timestamp);
+    const time = this.timer.getElapsed();
+    if (!this.currentMoveDelta.isZero() && time >= this.nextMoveTime) {
+      this.nextMoveTime = time + 0.2;
+      //   const start = this.cubepos;
+      this.move(this.currentMoveDelta);
+      const end = this.cubepos;
+      this.beginTransition(this.position, end, time);
+    }
+
+    if (this._transition) {
+      if (time < this._transition.beginTime) {
+        this.position.copy(this._transition.begin);
+      } else if (time > this._transition.endTime) {
+        this.position.copy(this._transition.end);
+        this._transition = undefined;
+      } else {
+        if (time < this._transition.middleTime) {
+          const t =
+            (time - this._transition.beginTime) /
+            (this._transition.middleTime - this._transition.beginTime);
+          this.position.x = THREE.MathUtils.lerp(
+            this._transition.begin.x,
+            this._transition.middle.x,
+            JEASINGS.Cubic.InOut(t),
+          );
+          this.position.y = THREE.MathUtils.lerp(
+            this._transition.begin.y,
+            this._transition.middle.y,
+            JEASINGS.Back.InOut(t),
+          );
+          this.position.z = THREE.MathUtils.lerp(
+            this._transition.begin.z,
+            this._transition.middle.z,
+            JEASINGS.Cubic.InOut(t),
+          );
+        } else {
+          const t =
+            (time - this._transition.middleTime) /
+            (this._transition.endTime - this._transition.middleTime);
+          this.position.x = THREE.MathUtils.lerp(
+            this._transition.middle.x,
+            this._transition.end.x,
+            JEASINGS.Elastic.Out(t),
+          );
+          this.position.y = THREE.MathUtils.lerp(
+            this._transition.middle.y,
+            this._transition.end.y,
+            JEASINGS.Elastic.Out(t),
+          );
+          this.position.z = THREE.MathUtils.lerp(
+            this._transition.middle.z,
+            this._transition.end.z,
+            JEASINGS.Elastic.Out(t),
+          );
+        }
       }
     }
 
@@ -116,6 +177,24 @@ export class Player extends THREE.Group {
     this.position.x = coord.x;
     this.position.y = 0;
     this.position.z = coord.y;
+  }
+
+  private beginTransition(
+    from: THREE.Vector3,
+    to: coordinates.CubeCoordinates,
+    time: number,
+  ) {
+    // Aniamtion cycle:
+    // Stage 1 - pump down, move tonew cell
+    // Stage 2 - pump up with elastic ease
+    this._transition = {
+      beginTime: time,
+      middleTime: time + 0.15,
+      endTime: time + 1.3,
+      begin: from.clone(),
+      middle: to.to_planar_unit3().add(new THREE.Vector3(0, -0.3, 0)),
+      end: to.to_planar_unit3().add(new THREE.Vector3(0, 0.3, 0)),
+    };
   }
 
   public setDirectionInput(direction: input.DirectionInputs) {
@@ -151,13 +230,12 @@ export class Player extends THREE.Group {
 
   public setLocation(position: T.CubeLocation) {
     this.cubepos = coordinates.CubeCoordinates.from_string(position);
-    this.updateObject();
+    this.beginTransition(this.position, this.cubepos, this.timer.getElapsed());
+    // this.updateObject();
   }
 
   public move(translation: coordinates.CubeCoordinates) {
-    this.cubepos.add(translation);
-    this.updateObject();
-
+    this.cubepos = this.cubepos.translated(translation);
     SOCKET.setLocation(this.cubepos.to_string());
   }
 

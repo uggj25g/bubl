@@ -336,5 +336,14 @@ export class CubeCoordinates {
     let y = (this.q + this.s) * SIN60;
     return new THREE.Vector2(-x, -y);
   }
+
+  public to_planar_unit3(): THREE.Vector3 {
+    // Increasing Q - (-Y, +X) (120deg counter-clock from screen down)
+    // Increasing R - (+Y) (0 deg, downwards in screen coords)
+    // Increasing S - (-Y, -X) (120deg clockwise from screen down)
+    let x = this.s / 2 - this.q / 2;
+    let y = (this.q + this.s) * SIN60;
+    return new THREE.Vector3(-x, 0, -y);
+  }
 }
 
