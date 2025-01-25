@@ -1,34 +1,148 @@
 import * as THREE from "three";
 import * as T from '../../types';
-
+import { HexagonMesh } from "./visual/hegaxon/flat";
 
 const SIN60 = Math.sqrt(3) / 2;
+
+const BASE_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+});
+
+const HOVER_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0xaaaaaa,
+});
+
+const FILLED_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0xff0000,
+});
+
+const TRAIL_MATERIAL = new THREE.MeshStandardMaterial({
+  color: 0xff00ff,
+});
 
 export type CubeCoordStr = T.CubeLocation;
 
 export type Cell = {
-  location: T.CubeLocation;
+  // location: T.CubeLocation;
   state: T.CellState;
 };
 
+export const BLANK_CELL: Cell = {
+  state: T.CellState.BLANK,
+};
+
+export class CellManager {
+  scene: THREE.Scene;
+  map: HexMap;
+  activeCells: Map<T.CubeLocation, VisualCell>;
+
+  constructor(scene: THREE.Scene, map: HexMap) {
+    this.scene = scene;
+    this.map = map;
+    this.activeCells = new Map<T.CubeLocation, VisualCell>();
+    map.callbacks.push((l, c) => this.on_cell_changed(l, c));
+  }
+
+  private on_cell_changed(
+    location: T.CubeLocation,
+    cell: Cell | undefined,
+  ): void {
+    const existing = this.activeCells.get(location);
+    if (!existing) {
+      return;
+    }
+    existing.updateCell(cell || BLANK_CELL);
+  }
+
+  public get_cell(location: T.CubeLocation): VisualCell {
+    const existing = this.activeCells.get(location);
+    if (existing) {
+      return existing;
+    }
+    const newCell = new VisualCell(
+      location,
+      this.map.get_cell(location) || BLANK_CELL,
+    );
+    this.activeCells.set(location, newCell);
+    this.scene.add(newCell);
+    return newCell;
+  }
+}
+
+export class VisualCell extends THREE.Group {
+  mesh: THREE.Mesh;
+  location: T.CubeLocation;
+  cell: Cell;
+  hover: boolean;
+
+  constructor(location: T.CubeLocation, cell: Cell) {
+    super();
+    this.location = location;
+    this.mesh = new HexagonMesh();
+    this.mesh.rotateX(Math.PI / 2);
+    this.cell = cell;
+    this.hover = false;
+    this.add(this.mesh);
+    this.updateObject();
+  }
+
+  public updateCell(cell: Cell) {
+    this.cell = cell;
+    this.updateObject();
+  }
+
+  private updateObject() {
+    const coord = CubeCoordinates.from_string(this.location);
+    const planar = coord.to_planar_unit();
+    this.position.x = planar.x;
+    this.position.z = planar.y;
+
+    if (this.hover) {
+      this.mesh.material = HOVER_MATERIAL;
+    } else {
+      if (this.cell.state == T.CellState.TRAIL) {
+        this.mesh.material = TRAIL_MATERIAL;
+      } else if (this.cell.state == T.CellState.FILLED) {
+        this.mesh.material = FILLED_MATERIAL;
+      } else {
+        this.mesh.material = BASE_MATERIAL;
+      }
+    }
+  }
+
+  public setHover(value: boolean) {
+    this.hover = value;
+    this.updateObject();
+  }
+}
+
+interface CellCallback {
+  (location: T.CubeLocation, cell: Cell | undefined): void;
+}
+
 export class HexMap {
   map: Map<CubeCoordStr, Cell>;
-
+  callbacks: CellCallback[];
   // TODO: callbacks when change happens, idk?
 
   constructor() {
     this.map = new Map<CubeCoordStr, Cell>();
+    this.callbacks = [];
   }
 
-  public get_cell(location: T.CubeLocation): Cell {
+  public get_cell(location: T.CubeLocation): Cell | undefined {
     // TODO(srudolfs): Each time we want to get a blank cell, we
     // end up constructing new objects? bad
-    return (
-      this.map.get(location) || {
-        location: location,
-        state: T.CellState.BLANK,
-      }
-    );
+    return this.map.get(location);
+  }
+
+  public setCell(location: T.CubeLocation, cell: Cell | undefined) {
+    if (cell) {
+      this.map.set(location, cell);
+    } else {
+      this.map.delete(location);
+    }
+    this.callbacks.forEach((e) => e(location, cell));
   }
 }
 
