@@ -1,5 +1,5 @@
 import * as T from '../../types';
-import { annihilate } from './grid_algo';
+import { annihilate, fill, cube_neigh } from './grid_algo';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
 /// ... milliseconds
@@ -332,6 +332,8 @@ export class Grid {
 
         // TODO[paulsn] O(4N)
 
+        let potentialConnections = new Set<[T.CubeLocation, color: T.Integer]>();
+
         // [1] trail growth WITHOUT connections
         for (let [locationKey, action] of Object.entries(this.#queue)) {
             if (typeof action === 'number') continue; // locationKey === '_count', actually unreachable
@@ -356,7 +358,20 @@ export class Grid {
                 // filled cells cannot become part of the trail
                 continue;
             }
+
             interim[location] = action;
+
+            let neighTrails = cube_neigh(location)
+                .filter((loc2) => {
+                    let cell = this.#queue[loc2] ?? this.#cells[loc2] as GCell;
+                    if (cell.state !== T.CellState.TRAIL) return false;
+                    if (cell.color !== action.color) return false;
+                    return true;
+                })
+                .length;
+            if (neighTrails > 1) {
+                potentialConnections.add([location, action.color]);
+            }
         }
 
         // [2] annihilation
@@ -376,7 +391,24 @@ export class Grid {
         }
 
         // [3] trail connection
-        // TODO
+        for (let [conn, color] of potentialConnections) {
+            let trail = fill(conn, interim);
+            if (trail !== null) {
+                for (let pos of annihilate(conn, interim)) {
+                    delete interim[pos];
+                    this.#updates![pos] = { state: T.CellState.BLANK };
+                }
+                for (let pos of trail) {
+                    interim[pos] = {
+                        state: T.CellState.FILLED,
+                        location: str_cube(pos),
+                        color,
+                        age: CELL_FILLED_MAX_AGE_TICKS, // TODO?
+                    };
+                    this.#updates![pos] = gcellToTcell(interim[pos]);
+                }
+            }
+        }
 
         // [4] trail decay
         for (let [locationKey, action] of Object.entries(this.#queue)) {
@@ -386,6 +418,15 @@ export class Grid {
             let location = locationKey as T.CubeLocation;
             delete interim[location];
             this.#updates![location] = { state: T.CellState.BLANK };
+        }
+        // [4.b] trail decay into filled
+        for (let [locationKey, action] of Object.entries(this.#queue)) {
+            if (typeof action === 'number') continue; // locationKey === '_count', actually unreachable
+            if (action.state !== T.CellState.FILLED) continue; // TODO[paulsn] O(6N)
+
+            let location = locationKey as T.CubeLocation;
+            interim[location] = action;
+            this.#updates![location] = gcellToTcell(action);
         }
 
         this.#queue = newQueue();
