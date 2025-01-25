@@ -1,11 +1,18 @@
 import * as T from '../../types';
 
+/// Grid will perform a Commit Tick (commit all queued changes) every
+/// ... milliseconds
 const GRID_COMMIT_TICK_RATE = 100;
-const GRID_DECAY_TICK_RATE = 500;
-const GRID_VACUUM_RATE = 10000;
-const CELL_FILLED_MAX_AGE_SECONDS = 20;
 
-const CELL_FILLED_MAX_AGE_TICKS = CELL_FILLED_MAX_AGE_SECONDS * 1000 / GRID_DECAY_TICK_RATE;
+/// Grid will perform a Time Decay Tick every ... Commit Ticks
+const GRID_DECAY_PER_N_COMMIT_TICKS = 10;
+
+/// A cell should fully decay from 1 to 0 in ... ticks (intervals of
+/// GRID_COMMIT_TICK_TIME ms * GRID_DECAY_PER_N_COMMIT_TICKS)
+const CELL_FILLED_MAX_AGE_TICKS = 200;
+
+/// Grid will perform a Vacuum Tick every ... Commit Ticks
+const GRID_VACUUM_PER_N_COMMIT_TICKS = 100;
 
 export type CubeLocation = { q: T.Integer, r: T.Integer, s: T.Integer };
 export const cube = (q: T.Integer, r: T.Integer, s: T.Integer) => ({ q, r, s });
@@ -149,6 +156,7 @@ export class Grid {
     #cells: GCellGrid;
     #queue: GQueue;
     #extent: GExtent;
+    #updates: T.CellGrid | null = null;
     filled: Set<T.CubeLocation>;
 
     onupdate?: (diff: T.CellGrid) => void;
@@ -169,10 +177,6 @@ export class Grid {
         }
 
         return grid;
-    }
-
-    get extent() {
-        return this.#extent;
     }
 
     setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.PlayerID, age: T.Integer) {
@@ -268,10 +272,10 @@ export class Grid {
         }
     }
 
-    commit() {
+    commit(_tick: number) {
         if (this.#queue._count === 0) return;
+        if (this.#updates === null) this.#updates = Object.create(null);
 
-        let updated = Object.create(null) as T.CellGrid;
         for (let [locationKey, cell] of Object.entries(this.#queue)) {
             if (typeof cell === 'number') continue; // locationKey ===  '_count'
             let location = locationKey as T.CubeLocation;
@@ -283,14 +287,14 @@ export class Grid {
             switch (cell.state) {
             case T.CellState.BLANK: {
                 delete this.#cells[location];
-                updated[location] = gcellToTcell(cell);
+                this.#updates![location] = gcellToTcell(cell);
                 break;
             }
             case T.CellState.TRAIL: {
                 // TODO attempt trail -> filled conversion
                 // TODO apply annihilation if already filled
                 this.#cells[location] = cell;
-                updated[location] = gcellToTcell(cell);
+                this.#updates![location] = gcellToTcell(cell);
                 break;
             }
             case 'tombstone': {
@@ -300,30 +304,27 @@ export class Grid {
             }
         }
 
-        this.onupdate?.(updated);
         this.#queue = newQueue();
     }
 
-    decay() {
+    decay(_tick: number) {
         if (this.filled.size === 0) return;
+        if (this.#updates === null) this.#updates = Object.create(null);
 
-        let touched = Object.create(null) as T.CellGrid;
         for (let location of this.filled) {
             let cell = this.#cells[location] as GCellFilled;
             cell.age -= 1;
             if (cell.age <= 0) {
-                touched[location] = { state: T.CellState.BLANK };
+                this.#updates![location] = { state: T.CellState.BLANK };
                 delete this.#cells[location];
                 this.filled.delete(location);
             } else {
-                touched[location] = gcellToTcell(cell);
+                this.#updates![location] = gcellToTcell(cell);
             }
         }
-
-        this.onupdate?.(touched);
     }
 
-    vacuum() {
+    vacuum(_tick: number) {
         let extent = newExtent();
         for (let gcell of Object.values(this.#cells)) {
             extent.extend(gcell.location);
@@ -331,20 +332,28 @@ export class Grid {
         this.#extent = extent.finalize();
         console.log('[grid] updated extent: %s', this.#extent);
     }
+
+    flush(_tick: number) {
+        if (this.#updates !== null) {
+            this.onupdate?.(this.#updates);
+            this.#updates = null;
+        }
+    }
 }
 
 const grid = new Grid();
 
+let tick = 0;
 setInterval(() => {
-    grid.commit();
+    tick = tick + 1;
+    grid.commit(tick);
+    if (tick % GRID_DECAY_PER_N_COMMIT_TICKS === 0) {
+        grid.decay(tick);
+    }
+    if (tick % GRID_VACUUM_PER_N_COMMIT_TICKS === 0) {
+        grid.vacuum(tick);
+    }
+    grid.flush(tick);
 }, GRID_COMMIT_TICK_RATE);
-
-setInterval(() => {
-    grid.decay();
-}, GRID_DECAY_TICK_RATE);
-
-setInterval(() => {
-    grid.vacuum();
-}, GRID_VACUUM_RATE);
 
 export default grid;
