@@ -4,7 +4,7 @@ import * as T from '../../types';
 import GRID from './grid';
 import { send } from './index';
 
-const PLAYER_TRAIL_LENGTH = 3;
+const PLAYER_TRAIL_LENGTH = 8;
 
 export class Player {
     id: T.PlayerID;
@@ -62,6 +62,7 @@ export class Player {
             this.id,
             this.state.energy,
         );
+        GRID.reviveAround(location, this.state.color);
         this.decayTrail.add(location);
 
         PLAYERS.broadcastPlayerUpdate();

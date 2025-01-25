@@ -1,6 +1,9 @@
 import * as T from '../../types';
 import * as G from './grid';
 
+export const cube_add = (a: G.CubeLocation, b: G.CubeLocation) =>
+    G.cube(a.q + b.q, a.r + b.r, a.s + b.s);
+
 export function cube_neigh(rootPos: T.CubeLocation): T.CubeLocation[] {
     let pos = G.str_cube(rootPos);
     return [
@@ -14,6 +17,22 @@ export function cube_neigh(rootPos: T.CubeLocation): T.CubeLocation[] {
 }
 export function cube_neigh_cells(rootPos: T.CubeLocation, grid: G.GCellInterimGrid): T.CubeLocation[] {
     return cube_neigh(rootPos).filter(pos => grid[pos] !== undefined);
+}
+
+export function cube_radius(rootPos: T.CubeLocation, radius: number): T.CubeLocation[] {
+    let re = [] as T.CubeLocation[];
+    let pos = G.str_cube(rootPos);
+    for (let q = -radius; q <= radius; q += 1) {
+        let lower = Math.max(-radius, -q - radius);
+        let upper = Math.max(radius, -q + radius);
+        for (let r = lower; r <= upper; r += 1) {
+            let s = -q - r;
+            let diff = G.cube(q, r, s);
+            let pos2 = cube_add(pos, diff);
+            re.push(G.cube_str(pos2));
+        }
+    }
+    return re;
 }
 
 function flood_trail(rootPos: T.CubeLocation, grid: G.GCellInterimGrid): Set<G.CubeLocation> {
@@ -64,7 +83,7 @@ export function annihilate(root: T.CubeLocation, grid: G.GCellInterimGrid): Set<
 }
 
 /// Find a shortest fill path starting from a leaf cell.
-export function fill(root: T.CubeLocation, grid: G.GCellInterimGrid): null | T.CubeLocation[] {
+export function fill(root: T.CubeLocation, color: T.Integer, grid: G.GCellInterimGrid): null | T.CubeLocation[] {
     let queue = [[root]];
     let shortestPath = [] as T.CubeLocation[];
     let iters = 1000;
@@ -96,7 +115,8 @@ export function fill(root: T.CubeLocation, grid: G.GCellInterimGrid): null | T.C
             return true;
         });
         const nextTrail = notInPath.filter((pos) => {
-            return grid[pos]?.state === T.CellState.TRAIL;
+            return grid[pos]?.state === T.CellState.TRAIL
+                && grid[pos].color === color;
         });
         for (let pos of nextTrail) {
             let newPath = [...path, pos];

@@ -180,80 +180,9 @@ export class HexMap {
     if (cell) {
       this.map.set(location, cell);
       this.callbacks.forEach((e) => e(location, cell));
-      if (cell.state == T.CellState.TRAIL) {
-        this.fillConnected(location);
-        // this.detectContour(location);
-      }
     } else {
       this.map.delete(location);
       this.callbacks.forEach((e) => e(location, cell));
-    }
-  }
-
-  private fillConnected(newCellLocation: T.CubeLocation): void {
-    // Filled - place at end of queue
-    // Trail - place at start of queue
-    // Look for connection to the placed cell
-    // If connection found, prune all other search in that direction
-
-    let shortestPath: T.CubeLocation[] = [];
-    let queue = new Queue<T.CubeLocation[]>();
-    queue.enqueue([newCellLocation]);
-    while (queue.size > 0) {
-      const path = queue.dequeue()!;
-      const last = path[path.length - 1];
-      const coord = CubeCoordinates.from_string(last);
-
-      let next: T.CubeLocation[] = [
-        coord.translated(CubeCoordinates.RIGHT).to_string(),
-        coord.translated(CubeCoordinates.BOTTOM_RIGHT).to_string(),
-        coord.translated(CubeCoordinates.BOTTOM_LEFT).to_string(),
-        coord.translated(CubeCoordinates.LEFT).to_string(),
-        coord.translated(CubeCoordinates.TOP_LEFT).to_string(),
-        coord.translated(CubeCoordinates.TOP_RIGHT).to_string(),
-      ];
-
-      // Allow only paths with at least length 4
-      if (path.length >= 4) {
-        for (const n of next) {
-          if (n == newCellLocation && n != last) {
-            console.log(`found new shortest path: ${path}`);
-            shortestPath = path;
-            break;
-          }
-        }
-      }
-      if (shortestPath.length > 0) {
-        // We definitely won't find any shorter path than this by doing BFS
-        break;
-      }
-
-      // Filter out invalid paths
-      const notInPath = next.filter((e) => {
-        let cell = this.get_cell(e);
-        if (!cell) return false;
-        if (path.indexOf(e) >= 0) {
-          // console.log(`${e} already in path ${path}`);
-          return false;
-        }
-        return true;
-      });
-      console.log(`valid directions: ${notInPath.length}`);
-      const nextTrail = notInPath.filter((e) => {
-        let cell = this.get_cell(e);
-        return cell?.state == T.CellState.TRAIL;
-      });
-      for (const n of nextTrail) {
-        let newPath = [...path, n];
-        console.log(`next trail: ${newPath}`);
-        queue.enqueue(newPath);
-      }
-    }
-
-    for (const c of shortestPath) {
-      this.setCell(c, {
-        state: T.CellState.FILLED,
-      });
     }
   }
 }
