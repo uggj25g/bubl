@@ -46,7 +46,7 @@ export class CubeCoordinates {
   public static RIGHT = new CubeCoordinates(1, 0, -1);
   public static BOTTOM_RIGHT = new CubeCoordinates(0, 1, -1);
   public static BOTTOM_LEFT = new CubeCoordinates(-1, 1, 0);
-  public static LEFT = new CubeCoordinates(1, 0, -1);
+  public static LEFT = new CubeCoordinates(-1, 0, 1);
   public static TOP_LEFT = new CubeCoordinates(0, -1, 1);
   public static TOP_RIGHT = new CubeCoordinates(1, -1, 0);
 

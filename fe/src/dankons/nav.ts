@@ -3,6 +3,7 @@ import "./../style.css";
 import * as THREE from "three";
 import * as coordinates from "../coordinates";
 import { Player } from "../player";
+import * as input from "../input";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -34,6 +35,25 @@ camera.position.z = 0;
 
 const player = new Player();
 scene.add(player);
+
+input.TOP_LEFT_CALLBACKS.push(() => {
+  player.move(coordinates.CubeCoordinates.TOP_LEFT);
+});
+input.TOP_RIGHT_CALLBACKS.push(() => {
+  player.move(coordinates.CubeCoordinates.TOP_RIGHT);
+});
+input.BOTTOM_LEFT_CALLBACKS.push(() => {
+  player.move(coordinates.CubeCoordinates.BOTTOM_LEFT);
+});
+input.BOTTOM_RIGHT_CALLBACKS.push(() => {
+  player.move(coordinates.CubeCoordinates.BOTTOM_RIGHT);
+});
+input.LEFT_CALLBACKS.push(() => {
+  player.move(coordinates.CubeCoordinates.LEFT);
+});
+input.RIGHT_CALLBACKS.push(() => {
+  player.move(coordinates.CubeCoordinates.RIGHT);
+});
 
 function animate() {
   // cube.rotation.x += 0.01;
