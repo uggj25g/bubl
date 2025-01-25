@@ -367,7 +367,7 @@ export class Grid {
 
             let neighTrails = cube_neigh(location)
                 .filter((loc2) => {
-                    let cell = this.#queue[loc2] ?? this.#cells[loc2] as GCell;
+                    let cell = this.#queue[loc2] ?? interim[loc2] as GCell;
                     if (cell === undefined) return false;
                     if (cell.state !== T.CellState.TRAIL) return false;
                     if (cell.color !== action.color) return false;
@@ -399,6 +399,9 @@ export class Grid {
         for (let [conn, color] of potentialConnections) {
             let trail = fill(conn, interim);
             if (trail !== null) {
+                // TODO[paulsn] not actually safe to use full annihilate here
+                // since it will also destroy opponents' trails that are only
+                // touching due to its flood fill nature
                 for (let pos of annihilate(conn, interim)) {
                     delete interim[pos];
                     this.#updates![pos] = { state: T.CellState.BLANK };
@@ -422,6 +425,10 @@ export class Grid {
             if (action.state !== T.CellState.BLANK) continue; // TODO[paulsn] O(4N)
 
             let location = locationKey as T.CubeLocation;
+            let current = interim[location];
+            // cell was filled before decay
+            if (current && current.state !== T.CellState.TRAIL) continue;
+
             delete interim[location];
             this.#updates![location] = { state: T.CellState.BLANK };
         }
