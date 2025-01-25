@@ -4,15 +4,18 @@ import * as T from "../../types";
 import * as coordinates from "./coordinates";
 import * as input from "./input";
 
-import { FBXLoader } from "three/examples/jsm/Addons.js";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+import { Timer } from "three/addons/misc/Timer.js";
 export class PlayerManager {
   scene: THREE.Scene;
+  inputManager: input.InputManager;
   client_player: Player | undefined;
   remote_players: Player[];
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, inputManager: input.InputManager) {
     this.scene = scene;
     this.remote_players = [];
+    this.inputManager = inputManager;
 
     SOCKET.callbacks.onPlayerSpawn = (e) => this.spawnRemotePlayer(e);
     SOCKET.callbacks.onPlayerMove = (e) => this.updateRemotePlayer(e);
@@ -20,32 +23,16 @@ export class PlayerManager {
   }
 
   public spawn_client_player(state: T.SelfPlayerState): void {
-    const player = new Player(state);
+    const player = new Player(state, true);
     this.scene.add(player);
     this.client_player = player;
-
-    input.TOP_RIGHT_CALLBACKS.push(() => {
-      player.move(coordinates.CubeCoordinates.TOP_LEFT);
-    });
-    input.TOP_LEFT_CALLBACKS.push(() => {
-      player.move(coordinates.CubeCoordinates.TOP_RIGHT);
-    });
-    input.BOTTOM_LEFT_CALLBACKS.push(() => {
-      player.move(coordinates.CubeCoordinates.BOTTOM_LEFT);
-    });
-    input.BOTTOM_RIGHT_CALLBACKS.push(() => {
-      player.move(coordinates.CubeCoordinates.BOTTOM_RIGHT);
-    });
-    input.LEFT_CALLBACKS.push(() => {
-      player.move(coordinates.CubeCoordinates.LEFT);
-    });
-    input.RIGHT_CALLBACKS.push(() => {
-      player.move(coordinates.CubeCoordinates.RIGHT);
-    });
+    this.inputManager.directionCallbacks.push((e) =>
+      player.setDirectionInput(e),
+    );
   }
 
   public spawnRemotePlayer(state: T.RemotePlayerState): void {
-    const player = new Player(state);
+    const player = new Player(state, false);
     this.remote_players.push(player);
     this.scene.add(player);
   }
@@ -75,8 +62,12 @@ export class Player extends THREE.Group {
   mesh: THREE.Group = new THREE.Group();
   cubepos: coordinates.CubeCoordinates;
 
+  inputTimer: Timer | undefined;
+  nextMoveTime: number;
+  currentMoveDelta: coordinates.CubeCoordinates;
+
   // TODO[paulsn] type discards energy information for client player
-  constructor(state: T.RemotePlayerState) {
+  constructor(state: T.RemotePlayerState, playable: boolean) {
     super();
     this.loadModel();
     this.remote_id = state.id;
@@ -84,14 +75,36 @@ export class Player extends THREE.Group {
     this.cubepos = coordinates.CubeCoordinates.from_string(state.location);
     this.mesh.position.y = 1;
     this.add(this.mesh);
+
+    if (playable) {
+      this.inputTimer = new Timer();
+    }
+    this.nextMoveTime = 0;
+    this.currentMoveDelta = new coordinates.CubeCoordinates();
+
+    requestAnimationFrame((e) => this.animate(e));
+  }
+
+  public animate(timestamp: number) {
+    // Handle current input direction if this is a player character
+    if (this.inputTimer) {
+      this.inputTimer.update(timestamp);
+      const time = this.inputTimer.getElapsed();
+      if (!this.currentMoveDelta.isZero() && time >= this.nextMoveTime) {
+        this.nextMoveTime = time + 0.2;
+        this.move(this.currentMoveDelta);
+      }
+    }
+
+    requestAnimationFrame((e) => this.animate(e));
   }
 
   private loadModel() {
     const loader = new FBXLoader();
-    loader.load('/playermodel.fbx', (fbx) => {
+    loader.load("/playermodel.fbx", (fbx) => {
       console.log("Loaded");
-      fbx.scale.setScalar(0.05); 
-      fbx.rotateY(11); 
+      fbx.scale.setScalar(0.05);
+      fbx.rotateY(11);
       this.mesh.position.y = 0.5;
       this.mesh.add(fbx);
       this.updateObject();
@@ -103,6 +116,37 @@ export class Player extends THREE.Group {
     this.position.x = coord.x;
     this.position.y = 0;
     this.position.z = coord.y;
+  }
+
+  public setDirectionInput(direction: input.DirectionInputs) {
+    let count = 0;
+    if (direction.down) count++;
+    if (direction.up) count++;
+    if (direction.left) count++;
+    if (direction.right) count++;
+    let newMoveDelta = new coordinates.CubeCoordinates();
+    if (count == 2) {
+      if (direction.up && direction.left) {
+        newMoveDelta.add(coordinates.CubeCoordinates.LEFT);
+      } else if (direction.up && direction.right) {
+        newMoveDelta.add(coordinates.CubeCoordinates.TOP_LEFT);
+      } else if (direction.down && direction.left) {
+        newMoveDelta.add(coordinates.CubeCoordinates.BOTTOM_RIGHT);
+      } else if (direction.down && direction.right) {
+        newMoveDelta.add(coordinates.CubeCoordinates.RIGHT);
+      }
+    } else if (count == 1) {
+      if (direction.right) {
+        newMoveDelta.add(coordinates.CubeCoordinates.TOP_RIGHT);
+      } else if (direction.left) {
+        newMoveDelta.add(coordinates.CubeCoordinates.BOTTOM_LEFT);
+      } else if (direction.down) {
+        newMoveDelta.add(coordinates.CubeCoordinates.BOTTOM_RIGHT);
+      } else if (direction.up) {
+        newMoveDelta.add(coordinates.CubeCoordinates.TOP_LEFT);
+      }
+    }
+    this.currentMoveDelta = newMoveDelta;
   }
 
   public setLocation(position: T.CubeLocation) {

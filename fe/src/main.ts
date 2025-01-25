@@ -6,9 +6,11 @@ import SOCKET from "./paulsn/ws_client";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { PlayerManager } from "./player";
 import { Environment } from "./visual/environment/scene";
+import { InputManager } from "./input";
 
 const environment = new Environment();
-const rpm = new PlayerManager(environment.scene);
+const inputManager = new InputManager();
+const rpm = new PlayerManager(environment.scene, inputManager);
 const composer = new EffectComposer(environment.renderer);
 
 const hexes: coordinates.VisualCell[] = [];

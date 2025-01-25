@@ -1,44 +1,74 @@
-export interface Callback {
-  (): void;
+export interface DirectionInputs {
+  up: boolean;
+  down: boolean;
+  left: boolean;
+  right: boolean;
+}
+export interface DirectionCallback {
+  (direction: DirectionInputs): void;
 }
 
-// TODO: Callback renaming, inputs are messy :D
-export const TOP_LEFT_CALLBACKS: Callback[] = []; // Q
-export const TOP_RIGHT_CALLBACKS: Callback[] = []; // E
-export const BOTTOM_LEFT_CALLBACKS: Callback[] = []; // Z
-export const BOTTOM_RIGHT_CALLBACKS: Callback[] = []; // C
-export const LEFT_CALLBACKS: Callback[] = []; // A
-export const RIGHT_CALLBACKS: Callback[] = []; // D
+export class InputManager {
+  direction: DirectionInputs;
+  directionCallbacks: DirectionCallback[] = [];
 
-function onKeyDown(event: KeyboardEvent) {
-  switch (event.code) {
-    case "KeyD":
-      // RIGHT
-      TOP_LEFT_CALLBACKS.forEach((e) => e());
-      break;
-    case "KeyE":
-      // TOP_RIGHT
-      TOP_RIGHT_CALLBACKS.forEach((e) => e());
-      break;
-    case "KeyA":
-      // LEFT
-      BOTTOM_LEFT_CALLBACKS.forEach((e) => e());
-      break;
-    case "KeyZ":
-      // BOTTOM_LEFT
-      BOTTOM_RIGHT_CALLBACKS.forEach((e) => e());
-      break;
-    case "KeyQ":
-      // TOP_LEFT
-      LEFT_CALLBACKS.forEach((e) => e());
-      break;
-    case "KeyC":
-      // BOTTOM RIGHT
-      RIGHT_CALLBACKS.forEach((e) => e());
-      break;
-    default:
-      return;
+  constructor() {
+    this.direction = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+    };
+
+    document.addEventListener("keydown", (e) => this.onKeyDown(e), false);
+    document.addEventListener("keyup", (e) => this.onKeyUp(e), false);
+  }
+
+  private onKeyDown(event: KeyboardEvent) {
+    console.log(`keydown: ${event.code}`);
+    switch (event.code) {
+      case "KeyW":
+        this.direction.up = true;
+        this.directionCallbacks.forEach((e) => e(this.direction));
+        break;
+      case "KeyA":
+        this.direction.left = true;
+        this.directionCallbacks.forEach((e) => e(this.direction));
+        break;
+      case "KeyS":
+        this.direction.down = true;
+        this.directionCallbacks.forEach((e) => e(this.direction));
+        break;
+      case "KeyD":
+        this.direction.right = true;
+        this.directionCallbacks.forEach((e) => e(this.direction));
+        break;
+      default:
+        return;
+    }
+  }
+
+  private onKeyUp(event: KeyboardEvent) {
+    console.log(`keyup: ${event.code}`);
+    switch (event.code) {
+      case "KeyW":
+        this.direction.up = false;
+        this.directionCallbacks.forEach((e) => e(this.direction));
+        break;
+      case "KeyA":
+        this.direction.left = false;
+        this.directionCallbacks.forEach((e) => e(this.direction));
+        break;
+      case "KeyS":
+        this.direction.down = false;
+        this.directionCallbacks.forEach((e) => e(this.direction));
+        break;
+      case "KeyD":
+        this.direction.right = false;
+        this.directionCallbacks.forEach((e) => e(this.direction));
+        break;
+      default:
+        return;
+    }
   }
 }
-
-document.addEventListener("keydown", onKeyDown, false);

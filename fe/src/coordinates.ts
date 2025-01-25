@@ -281,12 +281,12 @@ export class CubeCoordinates {
   r: number;
   s: number;
 
-  public static RIGHT = new CubeCoordinates(1, 0, -1);
-  public static BOTTOM_RIGHT = new CubeCoordinates(0, 1, -1);
-  public static BOTTOM_LEFT = new CubeCoordinates(-1, 1, 0);
-  public static LEFT = new CubeCoordinates(-1, 0, 1);
-  public static TOP_LEFT = new CubeCoordinates(0, -1, 1);
-  public static TOP_RIGHT = new CubeCoordinates(1, -1, 0);
+  public static RIGHT = new CubeCoordinates(1, 0, -1); // BOTTOM RIGHT
+  public static BOTTOM_RIGHT = new CubeCoordinates(0, 1, -1); // DOWN
+  public static BOTTOM_LEFT = new CubeCoordinates(-1, 1, 0); // LEFT
+  public static LEFT = new CubeCoordinates(-1, 0, 1); // TOP LEFT
+  public static TOP_LEFT = new CubeCoordinates(0, -1, 1); // UP
+  public static TOP_RIGHT = new CubeCoordinates(1, -1, 0); // RIGHT
 
   constructor(q: number = 0, r: number = 0, s: number = 0) {
     this.q = q;
@@ -299,6 +299,10 @@ export class CubeCoordinates {
 
   public to_string(): CubeCoordStr {
     return T.cube(this.q, this.r, this.s);
+  }
+
+  public isZero(): boolean {
+    return this.q == 0 && this.r == 0 && this.s == 0;
   }
 
   public add(other: CubeCoordinates) {
