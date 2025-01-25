@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+const SIN60 = Math.sqrt(3) / 2;
+
 type CubeCoordStr = string;
 
 export class HexMap {
@@ -9,11 +11,21 @@ export class HexMap {
 
   constructor() {
     this.map = new Map<CubeCoordStr, number>();
-    this.map.set("0,0,0", 1);
-    this.map.set("1,-1,0", 1);
-    this.map.set("-1,1,0", 1);
-    this.map.set("0,1,-1", 1);
-    this.map.set("0,-1,1", 1);
+  }
+
+  public static generate(radius: number): HexMap {
+    const map = new HexMap();
+    for (let q = -radius; q <= radius; q++) {
+      const lower = Math.max(-radius, -q - radius);
+      const upper = Math.min(radius, -q + radius);
+      for (let r = lower; r <= upper; r++) {
+        const s = -q - r;
+        const coord = new CubeCoordinates(q, r, s);
+        // -q-r essentially calculates the required S value
+        map.map.set(coord.to_string(), 1);
+      }
+    }
+    return map;
   }
 }
 
@@ -45,9 +57,9 @@ export class CubeCoordinates {
     // Increasing Q - (-Y, +X) (120deg counter-clock from screen down)
     // Increasing R - (+Y) (0 deg, downwards in screen coords)
     // Increasing S - (-Y, -X) (120deg clockwise from screen down)
-    // TODO: optimize by bringing out sqrt calc to constant
-    let x = (this.q + this.s) * (Math.sqrt(3) / 2);
-    let y = this.r + this.q / 2 - this.s / 2;
+    let x = this.s / 2 - this.q / 2;
+    let y = (this.q + this.s) * SIN60;
     return new THREE.Vector2(x, y);
   }
 }
+

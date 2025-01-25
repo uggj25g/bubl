@@ -17,13 +17,14 @@ document.body.appendChild(renderer.domElement);
 
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const geometry = new THREE.SphereGeometry(0.25);
-const hexes = new coordinates.HexMap();
+const hexes = coordinates.HexMap.generate(10);
 for (const [key, _] of hexes.map) {
   const sphere = new THREE.Mesh(geometry, material);
   scene.add(sphere);
-  const coords = coordinates.CubeCoordinates.from_string(key).to_planar_unit();
-  sphere.position.x = coords.x;
-  sphere.position.z = coords.y;
+  const coords = coordinates.CubeCoordinates.from_string(key);
+  const planar = coords.to_planar_unit();
+  sphere.position.x = planar.x;
+  sphere.position.z = planar.y;
 }
 
 camera.rotation.x = THREE.MathUtils.degToRad(-90);
