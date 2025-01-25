@@ -107,6 +107,7 @@ window.SOCKET = SOCKET;
             if (player.id === SOCKET.self.id) {
                 if ( ! playerHasDiff(player, SOCKET.self)) continue;
                 SOCKET.self.location = player.location;
+                console.log('[ws cb] self update');
                 SOCKET.callbacks.onSelfUpdate?.(SOCKET.self);
                 continue;
             }
@@ -117,18 +118,22 @@ window.SOCKET = SOCKET;
                 let prevPlayer = SOCKET.playerState.get(player.id)!;
                 if ( ! playerHasDiff(player, prevPlayer)) continue;
                 prevPlayer.location = player.location;
+                console.log('[ws cb] move', player.id);
                 SOCKET.callbacks.onPlayerMove?.(prevPlayer);
                 continue;
             }
 
             // spawn other
             SOCKET.playerState.set(player.id, player);
+            console.log('[ws cb] spawn', player.id);
             SOCKET.callbacks.onPlayerSpawn?.(player);
+            seen.add(player.id);
         }
 
         // process despawns
         for (let [id, player] of SOCKET.playerState.entries()) {
             if (seen.has(id)) continue;
+            console.log('[ws cb] despawn', player.id);
             SOCKET.callbacks.onPlayerDespawn?.(player);
             SOCKET.playerState.delete(player.id);
         }
