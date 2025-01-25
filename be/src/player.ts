@@ -7,12 +7,12 @@ import { send } from './index';
 const PLAYER_TRAIL_LENGTH = 3;
 
 export class Player {
-    id: T.PlayerState["id"];
+    id: T.PlayerID;
     conn: WebSocket;
-    state: T.PlayerState;
+    state: T.SelfPlayerState;
     decayTrail: Set<T.CubeLocation>;
 
-    constructor(conn: WebSocket, state: T.PlayerState) {
+    constructor(conn: WebSocket, state: T.SelfPlayerState) {
         this.conn = conn;
         this.state = state;
         this.id = state.id;
@@ -23,6 +23,12 @@ export class Player {
     }
     dispose() {
         this.conn.removeListener('message', this.handleMessageBase);
+    }
+
+    get remoteState(): T.RemotePlayerState {
+        let state: T.RemotePlayerState & { energy?: T.SelfPlayerState["energy"] } = { ...this.state };
+        delete state.energy;
+        return state;
     }
 
     handleMessageBase(rawMsg: any, isBinary: boolean) {
@@ -54,8 +60,7 @@ export class Player {
             location,
             this.state.color,
             this.id,
-            // TODO[paulsn] dynamic based on energy
-            PLAYER_TRAIL_LENGTH,
+            this.state.energy,
         );
         this.decayTrail.add(location);
 
@@ -65,7 +70,7 @@ export class Player {
 
 class Players {
     #byWs: Map<WebSocket, Player>;
-    #byId: Map<T.PlayerState["id"], Player>;
+    #byId: Map<T.PlayerID, Player>;
 
     constructor() {
         this.#byWs = new Map();
@@ -77,7 +82,7 @@ class Players {
         };
     }
 
-    #id(): T.PlayerState["id"] {
+    #id(): T.PlayerID {
         const scale = 1 << 31;
         let id;
         do {
@@ -88,10 +93,11 @@ class Players {
 
     spawn(conn: WebSocket): Player {
         let id = this.#id();
-        let state: T.PlayerState = {
+        let state: T.SelfPlayerState = {
             id: id,
             color: 0, // TODO[paulsn] assign random
             location: '0,0,0', // TODO[paulsn] assign random
+            energy: PLAYER_TRAIL_LENGTH, // TODO[paulsn] do not hardcode
         };
 
         let player = new Player(conn, state);
@@ -110,7 +116,7 @@ class Players {
 
         let otherPlayers = Array.from(this.#byId.values())
             .filter(p => p.id !== player.id)
-            .map(p => p.state);
+            .map(p => p.remoteState);
 
         send(player.conn, [
             T.MessageType.INIT,
@@ -130,23 +136,28 @@ class Players {
     broadcastPlayerUpdate(except?: Set<Player>) {
         except ??= new Set();
 
-        const msg: T.UpdateMessage = {
-            players: Array.from(this.#byId.values()).map(p => p.state),
-            gridDiff: [],
-        };
-
         for (let [ws, player] of this.#byWs.entries()) {
             if (except.has(player)) continue;
+            const msg: T.UpdateMessage = {
+                self: player.state,
+                others: Array.from(this.#byId.values())
+                    .filter(p => p.id !== player.id)
+                    .map(p => p.remoteState),
+                gridDiff: [],
+            }
             send(ws, [T.MessageType.UPDATE, msg]);
         }
     }
 
     broadcastGridUpdate(diff: T.CellGrid) {
-        const msg: T.UpdateMessage = {
-            players: Array.from(this.#byId.values()).map(p => p.state),
-            gridDiff: T.compressGrid(diff),
-        };
-        for (let ws of this.#byWs.keys()) {
+        for (let [ws, player] of this.#byWs.entries()) {
+            const msg: T.UpdateMessage = {
+                self: player.state,
+                others: Array.from(this.#byId.values())
+                    .filter(p => p.id !== player.id)
+                    .map(p => p.remoteState),
+                gridDiff: T.compressGrid(diff),
+            };
             send(ws, [T.MessageType.UPDATE, msg]);
         }
     }

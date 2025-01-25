@@ -1,7 +1,7 @@
 //#region Scaffolding
 
-export type ProtocolVersion = 3;
-export const PROTOCOL_VERSION = 3 as ProtocolVersion;
+export type ProtocolVersion = 4;
+export const PROTOCOL_VERSION = 4 as ProtocolVersion;
 
 export enum MessageType {
     INIT = "INIT",
@@ -29,12 +29,13 @@ export type ClientMessage =
 
 export type InitMessage = {
     protocolVersion: ProtocolVersion,
-    self: PlayerState,
-    others: Array<PlayerState>,
+    self: SelfPlayerState,
+    others: Array<RemotePlayerState>,
     grid: CompressedCellGrid,
 }
 export type UpdateMessage = {
-    players: Array<PlayerState>,
+    self: SelfPlayerState
+    others: Array<RemotePlayerState>,
 
     /// contains only changes since previous update message, not the full grid
     gridDiff: CompressedCellGrid,
@@ -55,11 +56,15 @@ export const cube = (q: Integer, r: Integer, s: Integer): CubeLocation =>
     `${q},${r},${s}`;
 export const cube_eq = (a: CubeLocation, b: CubeLocation) => a === b;
 
-export type PlayerState = {
-    id: Integer,
+export type PlayerID = Integer;
+export type RemotePlayerState = {
+    id: PlayerID,
     color: Integer,
     location: CubeLocation,
-}
+};
+export type SelfPlayerState = RemotePlayerState & {
+    energy: Integer,
+};
 
 export enum CellState {
     /// Cell is unoccupied.

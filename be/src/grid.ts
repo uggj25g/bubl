@@ -37,7 +37,7 @@ type GCellBlank = {
 type GCellTrail = {
     location: CubeLocation,
     state: T.CellState.TRAIL,
-    ownerPlayerId: T.Integer,
+    ownerPlayerId: T.PlayerID,
     color: T.Integer,
 
     /// number of decay ticks remaining if owned by current player
@@ -183,7 +183,7 @@ export class Grid {
         this.#queue._count += 1;
     }
 
-    setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.Integer, age: T.Integer) {
+    setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.PlayerID, age: T.Integer) {
         this.#queue[location] = {
             state: T.CellState.TRAIL,
             location: str_cube(location),
@@ -197,7 +197,7 @@ export class Grid {
 
     /// **mutates** locations by removing nodes that will decay on next commit,
     /// and nodes that are no longer TRAIL or are owned by a different player
-    decayTrail(ownerId: T.PlayerState["id"], locations: Set<T.CubeLocation>) {
+    decayTrail(ownerId: T.PlayerID, locations: Set<T.CubeLocation>) {
         for (let location of locations) {
             if (location in this.#queue) {
                 // TODO[paulsn] this is probably incorrect?
