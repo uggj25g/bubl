@@ -2,6 +2,7 @@ import "./../style.css";
 
 import * as THREE from "three";
 import * as coordinates from "../coordinates";
+import { Player } from "../player";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -30,6 +31,9 @@ for (const [key, _] of hexes.map) {
 camera.rotation.x = THREE.MathUtils.degToRad(-90);
 camera.position.y = 30;
 camera.position.z = 0;
+
+const player = new Player();
+scene.add(player);
 
 function animate() {
   // cube.rotation.x += 0.01;
