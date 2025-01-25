@@ -4,6 +4,7 @@ import * as THREE from "three";
 import * as coordinates from "../coordinates";
 import { Player } from "../player";
 import * as input from "../input";
+import * as T from "../../../types";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -19,15 +20,13 @@ document.body.appendChild(renderer.domElement);
 
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const geometry = new THREE.SphereGeometry(0.25);
-const hexes = coordinates.HexMap.generate(10);
-for (const [key, _] of hexes.map) {
+coordinates.for_radius(T.cube(0, 0, 0), 3, (coord) => {
   const sphere = new THREE.Mesh(geometry, material);
   scene.add(sphere);
-  const coords = coordinates.CubeCoordinates.from_string(key);
-  const planar = coords.to_planar_unit();
+  const planar = coord.to_planar_unit();
   sphere.position.x = planar.x;
   sphere.position.z = planar.y;
-}
+});
 
 camera.rotation.x = THREE.MathUtils.degToRad(-90);
 camera.position.y = 30;

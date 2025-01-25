@@ -1,41 +1,52 @@
 import * as THREE from "three";
 import * as T from '../../types';
 
-const SIN60 = Math.sqrt(3) / 2;
 
-// export enum CubeCoordDirection {
-//   Right,
-//   BottomRight,
-//   BottomLeft,
-//   Left,
-//   TopLeft,
-//   TopRight,
-// }
+const SIN60 = Math.sqrt(3) / 2;
 
 export type CubeCoordStr = T.CubeLocation;
 
+export type Cell = {
+  location: T.CubeLocation;
+  state: T.CellState;
+};
+
 export class HexMap {
-  map: Map<CubeCoordStr, number>;
+  map: Map<CubeCoordStr, Cell>;
 
   // TODO: callbacks when change happens, idk?
 
   constructor() {
-    this.map = new Map<CubeCoordStr, number>();
+    this.map = new Map<CubeCoordStr, Cell>();
   }
 
-  public static generate(radius: number): HexMap {
-    const map = new HexMap();
-    for (let q = -radius; q <= radius; q++) {
-      const lower = Math.max(-radius, -q - radius);
-      const upper = Math.min(radius, -q + radius);
-      for (let r = lower; r <= upper; r++) {
-        const s = -q - r;
-        const coord = new CubeCoordinates(q, r, s);
-        // -q-r essentially calculates the required S value
-        map.map.set(coord.to_string(), 1);
+  public get_cell(location: T.CubeLocation): Cell {
+    // TODO(srudolfs): Each time we want to get a blank cell, we
+    // end up constructing new objects? bad
+    return (
+      this.map.get(location) || {
+        location: location,
+        state: T.CellState.BLANK,
       }
+    );
+  }
+}
+
+export function for_radius(
+  center: T.CubeLocation,
+  radius: number,
+  callback: { (location: CubeCoordinates): void },
+) {
+  const c = CubeCoordinates.from_string(center);
+  for (let q = -radius; q <= radius; q++) {
+    const lower = Math.max(-radius, -q - radius);
+    const upper = Math.min(radius, -q + radius);
+    for (let r = lower; r <= upper; r++) {
+      const s = -q - r;
+      const coord = new CubeCoordinates(q, r, s);
+      coord.add(c);
+      callback(coord);
     }
-    return map;
   }
 }
 
