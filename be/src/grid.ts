@@ -216,6 +216,7 @@ export class Grid {
         }
     }
 
+    // @ts-ignore unused... FOR NOW
     #setFilled(location: T.CubeLocation, color: T.Integer) {
         this.#cells[location] = {
             state: T.CellState.FILLED,

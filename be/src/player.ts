@@ -100,7 +100,7 @@ class Players {
             location: '0,0,0', // TODO[paulsn] assign random
             energy: PLAYER_TRAIL_LENGTH, // TODO[paulsn] do not hardcode
         };
-        this.#nextColor = (this.#nextColor + 1) % 2;
+        this.#nextColor = (this.#nextColor + 1) % 3;
 
         let player = new Player(conn, state);
         this.#byWs.set(conn, player);

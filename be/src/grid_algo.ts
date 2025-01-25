@@ -1,6 +1,5 @@
 import * as T from '../../types';
 import * as G from './grid';
-import { assert } from './util';
 
 function cube_neigh(rootPos: G.CubeLocation): G.CubeLocation[] {
     return [
