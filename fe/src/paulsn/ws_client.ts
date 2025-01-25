@@ -81,7 +81,7 @@ window.SOCKET = SOCKET;
         }
 
         SOCKET.self = msg.self;
-        SOCKET.grid = msg.grid;
+        SOCKET.grid = T.decompressGrid(msg.grid);
         SOCKET.playerState = new Map(msg.others.map((p) => [p.id, p]));
         def.resolve([SOCKET.self, SOCKET.grid]);
 
@@ -139,7 +139,7 @@ window.SOCKET = SOCKET;
         }
 
         // [2] process grid updates
-        for (let [locationKey, cell] of Object.entries(msg.gridDiff)) {
+        for (let [locationKey, cell] of Object.entries(T.decompressGrid(msg.gridDiff))) {
             let location = locationKey as T.CubeLocation;
             SOCKET.callbacks.onCellUpdate?.(CubeCoordinates.from_string(location), cell);
             if (cell.state === T.CellState.BLANK) {

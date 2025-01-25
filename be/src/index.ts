@@ -23,7 +23,7 @@ function sendUpdate(except?: Set<WebSocket>) {
         players: Array.from(players.values()).map(conn => conn.state),
 
         // TODO[paulsn] actually keep track of a grid and send efficient update here
-        gridDiff: GRID.cells,
+        gridDiff: T.compressGrid(GRID.cells),
     };
     for (let ws of players.keys()) {
         if (except.has(ws)) continue;
@@ -65,7 +65,7 @@ wss.on('connection', (ws) => {
         others: Array.from(players.values())
             .filter(conn => conn !== playerConn)
             .map(conn => conn.state),
-        grid: GRID.cells,
+        grid: T.compressGrid(GRID.cells),
     }]);
     sendUpdate(new Set([ws]));
 
