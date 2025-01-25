@@ -364,6 +364,7 @@ export class Grid {
             let neighTrails = cube_neigh(location)
                 .filter((loc2) => {
                     let cell = this.#queue[loc2] ?? this.#cells[loc2] as GCell;
+                    if (cell === undefined) return false;
                     if (cell.state !== T.CellState.TRAIL) return false;
                     if (cell.color !== action.color) return false;
                     return true;
