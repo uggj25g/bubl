@@ -36,6 +36,8 @@ const FLAT_GEOMETRY = new HexagonFlatGeometry();
 
 const RAISED_GEOMETRY = new HexagonFlatGeometry(0.5);
 
+export const PLAYING_RADIUS = 3;
+
 export type CubeCoordStr = T.CubeLocation;
 
 export type Cell = {
@@ -52,10 +54,12 @@ export class CellManager {
   scene: THREE.Scene;
   map: HexMap;
   activeCells: Map<T.CubeLocation, VisualCell>;
+  currentCenter: T.CubeLocation;
 
   constructor(scene: THREE.Scene, map: HexMap) {
     this.scene = scene;
     this.map = map;
+    this.currentCenter = "0,0,0"; // Starting center
     this.activeCells = new Map<T.CubeLocation, VisualCell>();
     map.callbacks.push((l, c) => this.on_cell_changed(l, c));
   }
@@ -83,6 +87,15 @@ export class CellManager {
     this.activeCells.set(location, newCell);
     this.scene.add(newCell);
     return newCell;
+  }
+
+  public subtractCube(a: CubeCoordinates, b: CubeCoordinates) {
+    return new CubeCoordinates(a.q - b.q, a.r - b.r, a.s - b.s)
+  }
+
+  public cubeDistance(a: CubeCoordinates, b: CubeCoordinates) {
+    const sub = this.subtractCube(a, b);
+    return (Math.abs(sub.q) + Math.abs(sub.r) + Math.abs(sub.s));
   }
 }
 

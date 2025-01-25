@@ -1,118 +1,105 @@
-import './style.css'
-
-import * as THREE from 'three';
+import * as THREE from "three";
 import * as coordinates from "./coordinates";
 import * as T from "../../types";
+import SOCKET from "./paulsn/ws_client";
 
-import SOCKET from './paulsn/ws_client';
-SOCKET.init.then(() => {
-  console.log('socket init!');
-}, (err) => {
-  console.log('socket fail!', err);
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { PlayerManager } from "./player";
+import { Environment } from "./visual/environment/scene";
+
+const environment = new Environment();
+const rpm = new PlayerManager(environment.scene);
+const composer = new EffectComposer(environment.renderer);
+
+const hexes: coordinates.VisualCell[] = [];
+coordinates.for_radius(T.cube(0, 0, 0), coordinates.PLAYING_RADIUS, (coord) => {
+  hexes.push(environment.cellManager.get_cell(coord.to_string()));
 });
 
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { HexagonLine, HexagonMesh } from './visual/hegaxon/flat';
-// Create a scene
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8c8c8c);
-
-//Set up a rendered
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-const composer = new EffectComposer(renderer);
-
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-let controls = new OrbitControls(camera, renderer.domElement);
-
-const angleInRadians = Math.PI / 3;
-const distance = 20;
-const height = distance * Math.sin(angleInRadians);
-const radius = distance * Math.cos(angleInRadians);
-
-const rotationOffset = (20 * Math.PI) / 180;
-const xOffset = radius * Math.cos(rotationOffset);
-const zOffset = radius * Math.sin(rotationOffset);
-
-camera.position.set(xOffset, height, zOffset);
-
-camera.lookAt(0, 0, 0);
-
-const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.5);
-scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight(0xFFFFFF, 0.8);
-dirLight.position.set(-30, 50, 30);
-dirLight.castShadow = true;
-scene.add(dirLight);
-
-const hexes: THREE.Mesh[] = [];
-coordinates.for_radius(T.cube(0, 0, 0), 3, (coord) => {
-  const flatHex = new HexagonMesh();
-  const line = new HexagonLine();
-  line.add(flatHex);
-  const planar = coord.to_planar_unit();
-  line.rotateX(Math.PI / 2);
-
-  line.position.set(planar.x, 0, planar.y);
-  scene.add(line);
-  hexes.push(flatHex);
-});
+SOCKET.init.then(
+  (x) => {
+    console.log("socket init!");
+    const p = x[0];
+    rpm.spawn_client_player(p);
+    SOCKET.callbacks.onCellUpdate = (coord, cell) => {
+      environment.hexMap.setCell(coord.to_string(), cell);
+    }
+    const g = x[1];
+    console.log(g);
+  },
+  (err) => {
+    console.log("socket fail!", err)
+  }
+)
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-let selectedHoverHex: THREE.Mesh | null = null;
+let selectedHoverHex: coordinates.VisualCell | undefined = undefined;
 
 function onMouseMove(event: MouseEvent) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 }
 
-let selectedHexes: THREE.Mesh[] = [];
+
+function isVisualCell(t: any): t is coordinates.VisualCell {
+  return typeof t.setHover === "function";
+}
 
 function animate() {
   requestAnimationFrame(animate);
 
-  raycaster.setFromCamera(mouse, camera);
+  raycaster.setFromCamera(mouse, environment.camera);
   const intersects = raycaster.intersectObjects(hexes);
 
   if (intersects.length > 0) {
-    if (selectedHoverHex != intersects[0].object) {
-      if (selectedHoverHex && !selectedHexes.includes(selectedHoverHex)) {
-        selectedHoverHex.material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
+    for (const i of intersects) {
+      let visualCell = undefined;
+      for (const h of hexes) {
+        if (h.mesh == i.object) {
+          visualCell = h;
+          break;
+        }
       }
-      selectedHoverHex = intersects[0].object as THREE.Mesh;
-      if (!selectedHexes.includes(selectedHoverHex)) {
-        selectedHoverHex.material = new THREE.MeshStandardMaterial({ color: 0xFF0000   });
+
+      if (visualCell != selectedHoverHex && visualCell) {
+        selectedHoverHex?.setHover(false);
+        visualCell.setHover(true);
+        selectedHoverHex = visualCell;
       }
     }
   } else {
-    if (selectedHoverHex && !selectedHexes.includes(selectedHoverHex)) {
-      selectedHoverHex.material = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
+    if (selectedHoverHex) {
+      selectedHoverHex.setHover(false);
     }
-    selectedHoverHex = null;
+    selectedHoverHex = undefined;
   }
 
-  renderer.render(scene, camera);
+  if (rpm.client_player?.position) {
+    environment.camera.animateCameraPosition(rpm.client_player.position.x, rpm.client_player.position.z, 0.05);
+  }
+
+  environment.renderScene();
   composer.render();
 }
 animate();
 
-window.addEventListener('resize', () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  controls.update();
+window.addEventListener("resize", () => {
+  environment.renderer.setSize(window.innerWidth, window.innerHeight);
+  environment.camera.aspect = window.innerWidth / window.innerHeight;
+  environment.camera.updateProjectionMatrix();
 });
 
-renderer.domElement.addEventListener('mousemove', onMouseMove);
+environment.renderer.domElement.addEventListener("mousemove", onMouseMove);
 
-renderer.domElement.addEventListener('click', () => {
-  if (selectedHoverHex && !selectedHexes.includes(selectedHoverHex)) {
-    selectedHoverHex.material = new THREE.MeshStandardMaterial({ color: 0x0000FF });
-    selectedHexes.push(selectedHoverHex);
+environment.renderer.domElement.addEventListener("click", () => {
+  if (selectedHoverHex) {
+    if (selectedHoverHex.cell.state == T.CellState.BLANK) {
+      environment.hexMap.setCell(selectedHoverHex.location, {
+        state: T.CellState.TRAIL,
+      });
+    } else if (selectedHoverHex.cell.state == T.CellState.TRAIL) {
+      environment.hexMap.setCell(selectedHoverHex.location, undefined);
+    }
   }
 });
