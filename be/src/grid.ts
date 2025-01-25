@@ -238,6 +238,11 @@ export class Grid {
                 - Owner has stepped on the cell again. This resets its age, so
                   there's no point to apply decay.
 
+                - BUG: Owner is moving so fast that two trail decays have been
+                  enqueued within the same tick. TODO, should decay enqueued
+                  trails with accelerated rate if it doesn't match current
+                  location?
+
                 - An opponent has stepped on the trail, causing it to
                   annihilate. Decay could cause annihilation to be cancelled.
 
