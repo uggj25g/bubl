@@ -1,33 +1,33 @@
 import * as T from '../../types';
 import * as G from './grid';
 
-function cube_neigh(rootPos: G.CubeLocation): G.CubeLocation[] {
+function cube_neigh(rootPos: T.CubeLocation): T.CubeLocation[] {
+    let pos = G.str_cube(rootPos);
     return [
-        { q: rootPos.q, r: rootPos.r - 1, s: rootPos.s + 1 },
-        { q: rootPos.q, r: rootPos.r + 1, s: rootPos.s - 1 },
-        { q: rootPos.q - 1, r: rootPos.r, s: rootPos.s + 1 },
-        { q: rootPos.q + 1, r: rootPos.r, s: rootPos.s - 1 },
-        { q: rootPos.q - 1, r: rootPos.r + 1, s: rootPos.s },
-        { q: rootPos.q + 1, r: rootPos.r - 1, s: rootPos.s },
-    ];
+        { q: pos.q, r: pos.r - 1, s: pos.s + 1 },
+        { q: pos.q, r: pos.r + 1, s: pos.s - 1 },
+        { q: pos.q - 1, r: pos.r, s: pos.s + 1 },
+        { q: pos.q + 1, r: pos.r, s: pos.s - 1 },
+        { q: pos.q - 1, r: pos.r + 1, s: pos.s },
+        { q: pos.q + 1, r: pos.r - 1, s: pos.s },
+    ].map(pos => G.cube_str(pos));
 }
-function cube_neigh_cells(rootPos: G.CubeLocation, grid: G.GCellInterimGrid): G.CubeLocation[] {
-    return cube_neigh(rootPos).filter(pos => grid[G.cube_str(pos)] !== undefined);
+function cube_neigh_cells(rootPos: T.CubeLocation, grid: G.GCellInterimGrid): T.CubeLocation[] {
+    return cube_neigh(rootPos).filter(pos => grid[pos] !== undefined);
 }
 
-function flood_trail(rootPos: G.CubeLocation, grid: G.GCellInterimGrid): Set<G.CubeLocation> {
+function flood_trail(rootPos: T.CubeLocation, grid: G.GCellInterimGrid): Set<G.CubeLocation> {
     // let root = grid[G.cube_str(rootPos)];
     // assert(root.state === T.CellState.TRAIL);
     let queue = [rootPos];
-    let seen = new Set<T.CubeLocation>([G.cube_str(rootPos)]);
+    let seen = new Set<T.CubeLocation>([rootPos]);
     while (queue.length > 0) {
         let pos = queue.shift()!;
         for (let neigh of cube_neigh_cells(pos, grid)) {
-            let neighK = G.cube_str(neigh);
-            if (seen.has(neighK)) continue;
-            let cell = grid[neighK];
+            if (seen.has(neigh)) continue;
+            let cell = grid[neigh];
             if (cell.state !== T.CellState.TRAIL) continue;
-            seen.add(neighK);
+            seen.add(neigh);
             queue.push(neigh);
         }
     }
@@ -38,25 +38,27 @@ function flood_trail(rootPos: G.CubeLocation, grid: G.GCellInterimGrid): Set<G.C
 ///
 /// Any neighboring TRAILs will be replaced with BLANK, regardless of which
 /// player owns them.
-export function annihilate(root: G.CubeLocation, grid: G.GCellInterimGrid) {
+///
+/// Returns set of blanked positions.
+export function annihilate(root: T.CubeLocation, grid: G.GCellInterimGrid): Set<T.CubeLocation> {
     // [1] for each neighboring path, perform flooding search of full trail
     // length
-    let trails = new Set<G.CubeLocation>();
+    let trails = new Set<T.CubeLocation>();
     for (let neigh of cube_neigh_cells(root, grid)) {
-        let neighK = G.cube_str(neigh);
-        let cell = grid[neighK];
+        let cell = grid[neigh];
         if (cell.state !== T.CellState.TRAIL) continue;
         for (let pos of flood_trail(neigh, grid)) {
-            trails.add(pos);
+            trails.add(G.cube_str(pos));
         }
     }
 
     // [2] for all found trails, blankify
     for (let pos of trails) {
-        let k = G.cube_str(pos);
-        grid[k] = {
-            location: pos,
+        grid[pos] = {
+            location: G.str_cube(pos),
             state: T.CellState.BLANK,
         };
     }
+
+    return trails;
 }

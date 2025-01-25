@@ -92,6 +92,10 @@ class Players {
         return id;
     }
 
+    get all(): Player[] {
+        return Array.from(this.#byId.values());
+    }
+
     spawn(conn: WebSocket): Player {
         let id = this.#id();
         let state: T.SelfPlayerState = {

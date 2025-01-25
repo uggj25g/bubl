@@ -87,7 +87,6 @@ function gcellToTcell(cell: GCell): T.Cell {
     }
 }
 
-
 export type GQueue = {
     [location: T.CubeLocation]: GCellAction,
     _count: number,
@@ -321,42 +320,32 @@ export class Grid {
             if (action.state !== 'tombstone') continue; // TODO[paulsn] O(4N)
 
             let location = locationKey as T.CubeLocation;
-            annihilate(str_cube(location), interim);
+            let annihilated = annihilate(location, interim);
+            console.log('[grid] annihilated!', annihilated.size);
+            for (let pos of annihilated) {
+                delete interim[pos];
+                this.#updates![pos] = { state: T.CellState.BLANK };
+            }
+            delete interim[location];
+            this.#updates![location] = { state: T.CellState.BLANK };
         }
 
-        // [3] trail connection (TODO)
+        // [3] trail connection
+        // TODO
 
         // [4] trail decay
+        for (let [locationKey, action] of Object.entries(this.#queue)) {
+            if (typeof action === 'number') continue; // locationKey === '_count', actually unreachable
+            if (action.state !== T.CellState.BLANK) continue; // TODO[paulsn] O(4N)
 
-        for (let [locationKey, cell] of Object.entries(this.#queue)) {
-            if (typeof cell === 'number') continue; // locationKey === '_count', actually unreachable
             let location = locationKey as T.CubeLocation;
-
-            if (this.filled.has(location)) {
-                this.filled.delete(location);
-            }
-
-            switch (cell.state) {
-            case T.CellState.BLANK: {
-                delete this.#cells[location];
-                this.#updates![location] = gcellToTcell(cell);
-                break;
-            }
-            case T.CellState.TRAIL: {
-                // TODO attempt trail -> filled conversion
-                // TODO apply annihilation if already filled
-                this.#cells[location] = cell;
-                this.#updates![location] = gcellToTcell(cell);
-                break;
-            }
-            case 'tombstone': {
-                // TODO[paulsn] annihilate, mark all trails as blanked
-                break;
-            }
-            }
+            delete interim[location];
+            this.#updates![location] = { state: T.CellState.BLANK };
         }
 
         this.#queue = newQueue();
+        // by this point, tombstones are no longer in here
+        this.#cells = interim as GCellGrid;
     }
 
     decay(_tick: number) {
@@ -389,6 +378,9 @@ export class Grid {
         if (this.#updates !== null) {
             this.onupdate?.(this.#updates);
             this.#updates = null;
+        }
+        if (this.#queue._count > 0) {
+            this.#queue = newQueue();
         }
     }
 }
