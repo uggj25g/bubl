@@ -4,7 +4,7 @@ import * as T from '../../types';
 import GRID from './grid';
 import { send } from './index';
 
-const PLAYER_TRAIL_LENGTH = 3;
+const PLAYER_TRAIL_LENGTH = 5;
 
 export class Player {
     id: T.PlayerID;

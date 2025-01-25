@@ -183,8 +183,6 @@ export class Grid {
     }
 
     setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.PlayerID, age: T.Integer) {
-        let needIncrement = ! (location in this.#queue);
-
         let current = (this.#queue[location] ?? this.#cells[location]) as GCell | GCellTombstone | undefined;
 
         switch (current?.state) {
@@ -247,9 +245,7 @@ export class Grid {
         }
         }
 
-        if (needIncrement) {
-            this.#queue._count += 1;
-        }
+        this.#queue._count += 1;
     }
 
     // @ts-ignore unused... FOR NOW
@@ -330,7 +326,7 @@ export class Grid {
 
         let interim = this.#cells as GCellInterimGrid;
 
-        // TODO[paulsn] O(4N)
+        // TODO[paulsn] O(6N)
 
         let potentialConnections = new Set<[T.CubeLocation, color: T.Integer]>();
 
@@ -354,12 +350,20 @@ export class Grid {
                 };
                 continue;
             }
-            if (existing && existing.state !== T.CellState.TRAIL) {
+            if (
+                existing
+                && existing.state !== T.CellState.TRAIL
+                && ! action.decaysIntoFilled
+            ) {
                 // filled cells cannot become part of the trail
                 continue;
             }
 
             interim[location] = action;
+            this.#updates![location] = gcellToTcell(action);
+            if (existing?.state === T.CellState.FILLED) {
+                this.filled.delete(location);
+            }
 
             let neighTrails = cube_neigh(location)
                 .filter((loc2) => {
@@ -407,6 +411,7 @@ export class Grid {
                         age: CELL_FILLED_MAX_AGE_TICKS, // TODO?
                     };
                     this.#updates![pos] = gcellToTcell(interim[pos]);
+                    this.filled.add(pos);
                 }
             }
         }
@@ -423,11 +428,12 @@ export class Grid {
         // [4.b] trail decay into filled
         for (let [locationKey, action] of Object.entries(this.#queue)) {
             if (typeof action === 'number') continue; // locationKey === '_count', actually unreachable
-            if (action.state !== T.CellState.FILLED) continue; // TODO[paulsn] O(6N)
+            if (action.state !== T.CellState.FILLED) continue; // TODO[paulsn] O(4N)
 
             let location = locationKey as T.CubeLocation;
             interim[location] = action;
             this.#updates![location] = gcellToTcell(action);
+            this.filled.add(location);
         }
 
         this.#queue = newQueue();
