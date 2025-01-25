@@ -4,6 +4,7 @@ import * as T from "../../types";
 import * as coordinates from "./coordinates";
 import * as input from "./input";
 
+import { FBXLoader } from "three/examples/jsm/Addons.js";
 export class PlayerManager {
   scene: THREE.Scene;
   client_player: Player | undefined;
@@ -23,10 +24,10 @@ export class PlayerManager {
     this.scene.add(player);
     this.client_player = player;
 
-    input.TOP_LEFT_CALLBACKS.push(() => {
+    input.TOP_RIGHT_CALLBACKS.push(() => {
       player.move(coordinates.CubeCoordinates.TOP_LEFT);
     });
-    input.TOP_RIGHT_CALLBACKS.push(() => {
+    input.TOP_LEFT_CALLBACKS.push(() => {
       player.move(coordinates.CubeCoordinates.TOP_RIGHT);
     });
     input.BOTTOM_LEFT_CALLBACKS.push(() => {
@@ -71,20 +72,30 @@ export class PlayerManager {
 export class Player extends THREE.Group {
   remote_id: T.Integer;
   color: T.Integer;
-  mesh: THREE.Mesh;
+  mesh: THREE.Group = new THREE.Group();
   cubepos: coordinates.CubeCoordinates;
 
   // TODO[paulsn] type discards energy information for client player
   constructor(state: T.RemotePlayerState) {
     super();
+    this.loadModel();
     this.remote_id = state.id;
     this.color = state.color;
     this.cubepos = coordinates.CubeCoordinates.from_string(state.location);
-    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const geometry = new THREE.SphereGeometry(0.1);
-    this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.position.y = 1;
     this.add(this.mesh);
+  }
+
+  private loadModel() {
+    const loader = new FBXLoader();
+    loader.load('/playermodel.fbx', (fbx) => {
+      console.log("Loaded");
+      fbx.scale.setScalar(0.05); 
+      fbx.rotateY(11); 
+      this.mesh.position.y = 0.5;
+      this.mesh.add(fbx);
+      this.updateObject();
+    });
   }
 
   private updateObject() {
