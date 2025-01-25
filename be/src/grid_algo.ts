@@ -1,7 +1,7 @@
 import * as T from '../../types';
 import * as G from './grid';
 
-function cube_neigh(rootPos: T.CubeLocation): T.CubeLocation[] {
+export function cube_neigh(rootPos: T.CubeLocation): T.CubeLocation[] {
     let pos = G.str_cube(rootPos);
     return [
         { q: pos.q, r: pos.r - 1, s: pos.s + 1 },
@@ -12,7 +12,7 @@ function cube_neigh(rootPos: T.CubeLocation): T.CubeLocation[] {
         { q: pos.q + 1, r: pos.r - 1, s: pos.s },
     ].map(pos => G.cube_str(pos));
 }
-function cube_neigh_cells(rootPos: T.CubeLocation, grid: G.GCellInterimGrid): T.CubeLocation[] {
+export function cube_neigh_cells(rootPos: T.CubeLocation, grid: G.GCellInterimGrid): T.CubeLocation[] {
     return cube_neigh(rootPos).filter(pos => grid[pos] !== undefined);
 }
 
@@ -61,4 +61,48 @@ export function annihilate(root: T.CubeLocation, grid: G.GCellInterimGrid): Set<
     }
 
     return trails;
+}
+
+/// Find a shortest fill path starting from a leaf cell.
+export function fill(root: T.CubeLocation, grid: G.GCellInterimGrid): null | T.CubeLocation[] {
+    let queue = [[root]];
+    let shortestPath = [] as T.CubeLocation[];
+    let iters = 1000;
+
+    while (queue.length > 0) {
+        if (iters-- <= 0) break;
+        let path = queue.shift()!;
+        let last = path[path.length - 1];
+
+        let next = cube_neigh(last);
+
+        // Allow only paths with at least length 4
+        if (path.length >= 4) {
+            for (let n of next) {
+                if (n === root && n !== last) {
+                    shortestPath = path;
+                    break;
+                }
+            }
+        }
+        if (shortestPath.length > 0) {
+            // We definitely won't find any shorter path than this by doing BFS
+            return shortestPath;
+        }
+
+        const notInPath = next.filter((pos) => {
+            if ( ! (pos in grid)) return false;
+            if (path.indexOf(pos) !== -1) return false;
+            return true;
+        });
+        const nextTrail = notInPath.filter((pos) => {
+            return grid[pos]?.state === T.CellState.TRAIL;
+        });
+        for (let pos of nextTrail) {
+            let newPath = [...path, pos];
+            queue.push(newPath);
+        }
+    }
+
+    return null;
 }

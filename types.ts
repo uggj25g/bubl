@@ -1,7 +1,7 @@
 //#region Scaffolding
 
-export type ProtocolVersion = 4;
-export const PROTOCOL_VERSION = 4 as ProtocolVersion;
+export type ProtocolVersion = 5;
+export const PROTOCOL_VERSION = 5 as ProtocolVersion;
 
 export enum MessageType {
     INIT = "INIT",
@@ -95,6 +95,7 @@ export type CellTrail = CellCommon & {
     age: number,
 
     ownerPlayer: Integer,
+    decaysIntoFilled: boolean,
 };
 export type CellFilled = CellCommon & {
     state: CellState.FILLED,
@@ -126,6 +127,7 @@ export type CompressedCell = [
     /// 0...255
     age?: Integer,
     ownerPlayer?: Integer,
+    decaysIntoFilled?: 0 | 1,
 ];
 export type CompressedCellGrid = Array<CompressedCell>;
 
@@ -146,6 +148,7 @@ export function compressGrid(grid: CellGrid): CompressedCellGrid {
                 cell.color,
                 (cell.age * 255) | 0,
                 cell.ownerPlayer,
+                cell.decaysIntoFilled ? 1 : 0,
             ]);
             break;
         }
@@ -182,6 +185,7 @@ export function decompressGrid(grid: CompressedCellGrid): CellGrid {
                 color: cell[2]!,
                 age: cell[3]! / 255,
                 ownerPlayer: cell[4]!,
+                decaysIntoFilled: cell[5]! === 1,
             };
             re[location] = reCell;
             break;
