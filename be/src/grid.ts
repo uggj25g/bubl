@@ -48,6 +48,7 @@ export type GCellTrail = {
     state: T.CellState.TRAIL,
     ownerPlayerId: T.PlayerID,
     color: T.Integer,
+    decaysIntoFilled: boolean,
 
     /// number of decay ticks remaining if owned by current player
     age: T.Integer,
@@ -82,6 +83,7 @@ function gcellToTcell(cell: GCell): T.Cell {
             color: cell.color,
             age: cell.age / cell.maxAge,
             ownerPlayer: cell.ownerPlayerId,
+            decaysIntoFilled: cell.decaysIntoFilled,
         };
     }
     }
@@ -101,7 +103,7 @@ const newQueue = (): GQueue => {
     return queue;
 }
 
-export type GCellAction = GCellBlank | GCellTrail | GCellTombstone;
+export type GCellAction = GCellBlank | GCellTrail | GCellFilled | GCellTombstone;
 export type GCellTombstone = {
     location: CubeLocation,
     state: 'tombstone',
@@ -183,17 +185,51 @@ export class Grid {
     setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.PlayerID, age: T.Integer) {
         let needIncrement = ! (location in this.#queue);
 
-        switch (this.#queue[location]?.state) {
+        let current = (this.#queue[location] ?? this.#cells[location]) as GCell | GCellTombstone | undefined;
+
+        switch (current?.state) {
         case 'tombstone': {
             // noop - tombstone already enqueued, we don't need another one
             break;
         }
         case T.CellState.TRAIL: {
-            this.#queue[location] = {
-                state: 'tombstone',
-                location: str_cube(location),
-                originalColor: this.#queue[location].color!,
-            };
+            if (current.color === color) {
+                // take over teammate's trail only if own energy is greater
+                if (current.maxAge < age) {
+                    this.#queue[location] = {
+                        state: T.CellState.TRAIL,
+                        location: current.location,
+                        color,
+                        age,
+                        maxAge: age,
+                        ownerPlayerId,
+                        decaysIntoFilled: current.decaysIntoFilled,
+                    };
+                }
+            } else {
+                // annihilate other color trails
+                this.#queue[location] = {
+                    state: 'tombstone',
+                    location: str_cube(location),
+                    originalColor: current.color!,
+                };
+            }
+            break;
+        }
+        case T.CellState.FILLED: {
+            if (current.color === color) {
+                // mark as trail revertible to filled
+                this.#queue[location] = {
+                    state: T.CellState.TRAIL,
+                    location: str_cube(location),
+                    color,
+                    age,
+                    maxAge: age,
+                    ownerPlayerId,
+                    decaysIntoFilled: true,
+                };
+            }
+            // otherwise owned by other color, do not touch
             break;
         }
         case T.CellState.BLANK: // fallthrough
@@ -205,6 +241,7 @@ export class Grid {
                 age: age,
                 maxAge: age,
                 ownerPlayerId: ownerPlayerId,
+                decaysIntoFilled: false,
             };
             break;
         }
@@ -268,10 +305,18 @@ export class Grid {
 
             let newAge = upd.age - 1;
             if (newAge <= 0) {
-                this.#queue[location] = {
-                    state: T.CellState.BLANK,
-                    location: upd.location,
-                };
+                this.#queue[location] =
+                    upd.decaysIntoFilled
+                    ? {
+                        state: T.CellState.FILLED,
+                        location: upd.location,
+                        color: upd.color,
+                        age: CELL_FILLED_MAX_AGE_TICKS, // TODO[paulsn] is valid?
+                    }
+                    : {
+                        state: T.CellState.BLANK,
+                        location: upd.location,
+                    };
                 locations.delete(location);
                 continue;
             }
