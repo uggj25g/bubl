@@ -6,6 +6,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "check": "tsc --noEmit",
     "run-prod": "node dist/index.js",
     "run-dev": "ts-node src/index.ts"
   }

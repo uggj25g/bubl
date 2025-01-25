@@ -4,15 +4,19 @@ import { deferred } from './util';
 type Handlers = { [type in T.ServerMessageType]: (msg: T.ServerMessage) => void };
 export const SOCKET = {
     conn: new WebSocket('ws://127.0.0.1:9025'),
-    init: null as any as Promise<T.PlayerState>,
+    init: null as any as Promise<[T.PlayerState, T.CellGrid]>,
 
-    /// HACK[paulsn]: erases that null can be any type during initialization so
-    /// that accessing it after that point is less of a pain
+    /// HACK[paulsn]: erases that self can be null during initialization so that
+    /// accessing it after initialization is less of a pain
     ///
     /// SAFETY: await for `SOCKET.init` if you're not sure whether this will be
     /// initialized!
     // TODO[paulsn] event bus/observer pattern?
     self: null as any as T.PlayerState,
+
+    /// HACK[paulsn]: same as self
+    /// SAFETY: same as self
+    grid: null as any as T.CellGrid,
 
     /// contains state only for other (non-self) players
     /// objects recreated, NOT PATCHED, after every update
@@ -23,7 +27,7 @@ export const SOCKET = {
 
     /// sends a request to set new location to server
     /// SOCKET.self will not be updated until acknowledged by server
-    setLocation(location: T.PlayerLocation) {
+    setLocation(location: T.CubeLocation) {
         let msg = [T.MessageType.MOVE, { location }];
         SOCKET.conn.send(JSON.stringify(msg));
     },
@@ -33,7 +37,7 @@ export default SOCKET;
 window.SOCKET = SOCKET;
 
 {
-    let def = deferred<T.PlayerState>();
+    let def = deferred<[T.PlayerState, T.CellGrid]>();
     SOCKET.init = def.promise;
     SOCKET.conn.onerror = (ev: Event) => {
         console.log('[ws] error:', ev);
@@ -66,8 +70,9 @@ window.SOCKET = SOCKET;
         }
 
         SOCKET.self = msg.self;
+        SOCKET.grid = msg.grid;
         SOCKET.playerState = msg.others;
-        def.resolve(SOCKET.self);
+        def.resolve([SOCKET.self, SOCKET.grid]);
     };
 
     SOCKET.handlers[T.MessageType.UPDATE] = (msg_) => {
@@ -78,6 +83,18 @@ window.SOCKET = SOCKET;
             }
         }
         SOCKET.playerState = msg.players.filter(pl => pl.id !== SOCKET.self.id);
+
+        // TODO[paulsn] O(N^2) inefficient
+        outer: for (let updCell of msg.gridDiff) {
+            for (let [i, cell] of SOCKET.grid.entries()) {
+                if (T.cube_eq(cell.location, updCell.location)) {
+                    SOCKET.grid[i] = updCell;
+                    continue outer;
+                }
+            }
+            // previously unseen cell
+            SOCKET.grid.push(updCell);
+        }
     };
 }
 

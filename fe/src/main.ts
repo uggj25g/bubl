@@ -3,6 +3,11 @@ import './style.css'
 import * as THREE from 'three';
 
 import SOCKET from './paulsn/ws_client';
+SOCKET.init.then(() => {
+  console.log('socket init!');
+}, (err) => {
+  console.log('socket fail!', err);
+});
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -46,6 +51,4 @@ function animate() {
 }
 renderer.setAnimationLoop(animate);
 
-renderer.domElement.addEventListener('click', (ev: MouseEvent) => {
-  SOCKET.setLocation([ev.clientX, ev.clientY]);
-});
+// TODO: SOCKET.setLocation :)
