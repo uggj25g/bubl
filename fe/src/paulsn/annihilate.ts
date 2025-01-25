@@ -120,17 +120,13 @@ renderer.domElement.addEventListener("mousemove", onMouseMove);
 
 renderer.domElement.addEventListener('click', (ev) => {
   if (selectedHoverHex) {
-    selectedHoverHex.setHover(false);
-    selectedHoverHex.updateCell({ state: T.CellState.TRAIL });
-    selectedHoverHex.cellColor = 1;
+    selectedHoverHex.updateCell({ state: T.CellState.TRAIL, color: 1 });
     selectedHoverHex.mesh.material = new THREE.MeshStandardMaterial({ color: 0xff00000 });
   }
 });
 renderer.domElement.addEventListener('contextmenu', (ev) => {
   if (selectedHoverHex) {
-    selectedHoverHex.setHover(false);
-    selectedHoverHex.updateCell({ state: T.CellState.TRAIL });
-    selectedHoverHex.cellColor = 2;
+    selectedHoverHex.updateCell({ state: T.CellState.TRAIL, color: 2 });
     selectedHoverHex.mesh.material = new THREE.MeshStandardMaterial({ color: 0x0000ff });
   }
 });
@@ -138,12 +134,12 @@ renderer.domElement.addEventListener('dblclick', () => {
   if (selectedHoverHex) {
     let interimGrid = Object.create(null) as G.GCellInterimGrid;
     for (let hex of hexes) {
-      if (hex.cellColor === undefined) continue;
+      if (hex.cell.color === undefined) continue;
       interimGrid[hex.location] = {
         state: T.CellState.TRAIL,
-        color: hex.cellColor!,
+        color: hex.cell.color!,
         location: G.str_cube(hex.location),
-        ownerPlayerId: hex.cellColor,
+        ownerPlayerId: hex.cell.color,
         age: 1,
         maxAge: 1,
       };
@@ -154,11 +150,11 @@ renderer.domElement.addEventListener('dblclick', () => {
       if (hex.location in interimGrid) {
         let cell = interimGrid[hex.location];
         if (cell.state === T.CellState.BLANK) {
-          hex.cellColor = undefined;
+          hex.cell.color = undefined;
           hex.updateCell({ state: T.CellState.BLANK });
         }
       } else {
-        hex.cellColor = undefined;
+        hex.cell.color = undefined;
         hex.updateCell({ state: T.CellState.BLANK });
       }
     }
