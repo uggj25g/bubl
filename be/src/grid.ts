@@ -86,15 +86,18 @@ export class Grid {
             if (typeof cell === 'number') continue;
             let location = locationKey as T.CubeLocation;
 
+            if (cell.state === T.CellState.FILLED) {
+                this.filled.add(location);
+            } else if ((location in this.cells) && this.cells[location].state === T.CellState.FILLED) {
+                this.filled.delete(location);
+            }
+
             if (cell.state === T.CellState.BLANK) {
                 delete this.cells[location];
             } else {
                 this.cells[location] = cell;
             }
 
-            if (cell.state === T.CellState.FILLED) {
-                this.filled.add(location);
-            }
         }
 
         this.onupdate?.(this.queue);
