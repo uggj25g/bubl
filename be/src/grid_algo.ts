@@ -64,7 +64,7 @@ export function annihilate(root: T.CubeLocation, grid: G.GCellInterimGrid): Set<
 }
 
 /// Find a shortest fill path starting from a leaf cell.
-export function fill(root: T.CubeLocation, grid: G.GCellInterimGrid): null | T.CubeLocation[] {
+export function fill(root: T.CubeLocation, color: T.Integer, grid: G.GCellInterimGrid): null | T.CubeLocation[] {
     let queue = [[root]];
     let shortestPath = [] as T.CubeLocation[];
     let iters = 1000;
@@ -96,7 +96,8 @@ export function fill(root: T.CubeLocation, grid: G.GCellInterimGrid): null | T.C
             return true;
         });
         const nextTrail = notInPath.filter((pos) => {
-            return grid[pos]?.state === T.CellState.TRAIL;
+            return grid[pos]?.state === T.CellState.TRAIL
+                && grid[pos].color === color;
         });
         for (let pos of nextTrail) {
             let newPath = [...path, pos];

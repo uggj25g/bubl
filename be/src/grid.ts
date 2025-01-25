@@ -397,7 +397,7 @@ export class Grid {
 
         // [3] trail connection
         for (let [conn, color] of potentialConnections) {
-            let trail = fill(conn, interim);
+            let trail = fill(conn, color, interim);
             if (trail !== null) {
                 // TODO[paulsn] not actually safe to use full annihilate here
                 // since it will also destroy opponents' trails that are only
