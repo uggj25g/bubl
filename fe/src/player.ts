@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import SOCKET from './paulsn/ws_client';
 import * as coordinates from "./coordinates";
 
 export class Player extends THREE.Group {
@@ -21,5 +22,7 @@ export class Player extends THREE.Group {
     this.position.x = coord.x;
     this.position.y = 0;
     this.position.z = coord.y;
+
+    SOCKET.setLocation(this.cubepos.to_string());
   }
 }

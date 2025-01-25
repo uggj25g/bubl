@@ -1,4 +1,5 @@
 import * as T from '../../../types';
+import { CubeCoordinates } from '../coordinates';
 import { deferred } from './util';
 
 type Handlers = { [type in T.ServerMessageType]: (msg: T.ServerMessage) => void };
@@ -21,7 +22,7 @@ export const SOCKET = {
     /// contains state only for other (non-self) players
     /// objects recreated, NOT PATCHED, after every update
     // TODO[paulsn] event bus/observer pattern?
-    playerState: [] as Array<T.PlayerState>,
+    playerState: new Map<T.PlayerState["id"], T.PlayerState>(),
 
     handlers: Object.create(null) as Handlers,
 
@@ -31,7 +32,17 @@ export const SOCKET = {
         let msg = [T.MessageType.MOVE, { location }];
         SOCKET.conn.send(JSON.stringify(msg));
     },
+
+    callbacks: {} as Callbacks,
 };
+
+export interface Callbacks {
+    onSelfUpdate?(state: T.PlayerState): void;
+    onPlayerSpawn?(state: T.PlayerState): void;
+    onPlayerDespawn?(state: T.PlayerState): void;
+    onPlayerMove?(state: T.PlayerState): void;
+    onCellUpdate?(location: CubeCoordinates, data: T.Cell): void;
+}
 
 export default SOCKET;
 window.SOCKET = SOCKET;
@@ -71,21 +82,61 @@ window.SOCKET = SOCKET;
 
         SOCKET.self = msg.self;
         SOCKET.grid = msg.grid;
-        SOCKET.playerState = msg.others;
+        SOCKET.playerState = new Map(msg.others.map((p) => [p.id, p]));
         def.resolve([SOCKET.self, SOCKET.grid]);
+
+        SOCKET.callbacks.onSelfUpdate?.(SOCKET.self);
+        for (let [locationKey, cell] of Object.entries(SOCKET.grid)) {
+            let location = locationKey as T.CubeLocation;
+            SOCKET.callbacks.onCellUpdate?.(CubeCoordinates.from_string(location), cell);
+        }
     };
+
+    function playerHasDiff(p1: T.PlayerState, p2: T.PlayerState): boolean {
+        // assumes that id and color don't change
+        return p1.location !== p2.location;
+    }
 
     SOCKET.handlers[T.MessageType.UPDATE] = (msg_) => {
         let msg = msg_[1] as T.UpdateMessage;
-        for (let player of msg.players) {
-            if (player.id === SOCKET.self.id) {
-                SOCKET.self = player;
-            }
-        }
-        SOCKET.playerState = msg.players.filter(pl => pl.id !== SOCKET.self.id);
 
+        // [1] process player updates
+        let seen = new Set<T.PlayerState["id"]>();
+        for (let player of msg.players) {
+            // update self
+            if (player.id === SOCKET.self.id) {
+                if ( ! playerHasDiff(player, SOCKET.self)) continue;
+                SOCKET.self.location = player.location;
+                SOCKET.callbacks.onSelfUpdate?.(SOCKET.self);
+                continue;
+            }
+
+            // move other
+            if (SOCKET.playerState.has(player.id)) {
+                seen.add(player.id);
+                let prevPlayer = SOCKET.playerState.get(player.id)!;
+                if ( ! playerHasDiff(player, prevPlayer)) continue;
+                prevPlayer.location = player.location;
+                SOCKET.callbacks.onPlayerMove?.(prevPlayer);
+                continue;
+            }
+
+            // spawn other
+            SOCKET.playerState.set(player.id, player);
+            SOCKET.callbacks.onPlayerSpawn?.(player);
+        }
+
+        // process despawns
+        for (let [id, player] of SOCKET.playerState.entries()) {
+            if (seen.has(id)) continue;
+            SOCKET.callbacks.onPlayerDespawn?.(player);
+            SOCKET.playerState.delete(player.id);
+        }
+
+        // [2] process grid updates
         for (let [locationKey, cell] of Object.entries(msg.gridDiff)) {
             let location = locationKey as T.CubeLocation;
+            SOCKET.callbacks.onCellUpdate?.(CubeCoordinates.from_string(location), cell);
             if (cell.state === T.CellState.BLANK) {
                 delete SOCKET.grid[location];
             } else {
