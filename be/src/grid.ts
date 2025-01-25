@@ -447,6 +447,11 @@ export class Grid {
 
         for (let location of this.filled) {
             let cell = this.#cells[location] as GCellFilled;
+            if (!cell) {
+                // ???
+                this.filled.delete(location);
+                continue;
+            }
             cell.age -= 1;
             if (cell.age <= 0) {
                 this.#updates![location] = { state: T.CellState.BLANK };
