@@ -71,6 +71,7 @@ export class Player {
 class Players {
     #byWs: Map<WebSocket, Player>;
     #byId: Map<T.PlayerID, Player>;
+    #nextColor = 0;
 
     constructor() {
         this.#byWs = new Map();
@@ -95,10 +96,11 @@ class Players {
         let id = this.#id();
         let state: T.SelfPlayerState = {
             id: id,
-            color: 0, // TODO[paulsn] assign random
+            color: this.#nextColor, // TODO[paulsn] assign random
             location: '0,0,0', // TODO[paulsn] assign random
             energy: PLAYER_TRAIL_LENGTH, // TODO[paulsn] do not hardcode
         };
+        this.#nextColor = (this.#nextColor + 1) % 2;
 
         let player = new Player(conn, state);
         this.#byWs.set(conn, player);

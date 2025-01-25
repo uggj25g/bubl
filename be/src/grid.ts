@@ -79,7 +79,10 @@ function gcellToTcell(cell: GCell): T.Cell {
 }
 
 
-type GQueue = GCellGrid & { _count: number };
+type GQueue = {
+    [location: T.CubeLocation]: GCellAction,
+    _count: number,
+};
 const newQueue = (): GQueue => {
     let queue = Object.create(null);
     Object.defineProperty(queue, '_count', {
@@ -89,6 +92,13 @@ const newQueue = (): GQueue => {
     queue._count = 0;
     return queue;
 }
+
+type GCellAction = GCellBlank | GCellTrail | GCellTombstone;
+type GCellTombstone = {
+    location: CubeLocation,
+    state: 'tombstone',
+    originalColor: T.Integer,
+};
 
 type GExtent = {
     q: [min: T.Integer, max: T.Integer],
@@ -165,34 +175,49 @@ export class Grid {
         return this.#extent;
     }
 
-    setBlank(location: T.CubeLocation) {
-        this.#queue[location] = {
-            state: T.CellState.BLANK,
-            location: str_cube(location),
-        };
-        this.#queue._count += 1;
+    setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.PlayerID, age: T.Integer) {
+        let needIncrement = ! (location in this.#queue);
+
+        switch (this.#queue[location]?.state) {
+        case 'tombstone': {
+            // noop - tombstone already enqueued, we don't need another one
+            break;
+        }
+        case T.CellState.TRAIL: {
+            this.#queue[location] = {
+                state: 'tombstone',
+                location: str_cube(location),
+                originalColor: this.#queue[location].color!,
+            };
+            break;
+        }
+        case T.CellState.BLANK: // fallthrough
+        case undefined: {
+            this.#queue[location] = {
+                state: T.CellState.TRAIL,
+                location: str_cube(location),
+                color: color,
+                age: age,
+                maxAge: age,
+                ownerPlayerId: ownerPlayerId,
+            };
+            break;
+        }
+        }
+
+        if (needIncrement) {
+            this.#queue._count += 1;
+        }
     }
 
-    setFilled(location: T.CubeLocation, color: T.Integer) {
-        this.#queue[location] = {
+    #setFilled(location: T.CubeLocation, color: T.Integer) {
+        this.#cells[location] = {
             state: T.CellState.FILLED,
             location: str_cube(location),
             color: color,
             age: CELL_FILLED_MAX_AGE_TICKS,
-        };
-        this.#queue._count += 1;
-    }
-
-    setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.PlayerID, age: T.Integer) {
-        this.#queue[location] = {
-            state: T.CellState.TRAIL,
-            location: str_cube(location),
-            color: color,
-            age: age,
-            maxAge: age,
-            ownerPlayerId: ownerPlayerId,
-        };
-        this.#queue._count += 1;
+        } as GCellFilled;
+        this.filled.add(location);
     }
 
     /// **mutates** locations by removing nodes that will decay on next commit,
@@ -200,13 +225,30 @@ export class Grid {
     decayTrail(ownerId: T.PlayerID, locations: Set<T.CubeLocation>) {
         for (let location of locations) {
             if (location in this.#queue) {
-                // TODO[paulsn] this is probably incorrect?
+                /* An update is being queued in parallel to decay. This means
+                one of these:
+
+                - A friendly has stepped on the trail, absorbing its ownership.
+                  Decay shouldn't happen due to owner change.
+
+                - Owner has stepped on the cell again. This resets its age, so
+                  there's no point to apply decay.
+
+                - An opponent has stepped on the trail, causing it to
+                  annihilate. Decay could cause annihilation to be cancelled.
+
+                  (TODO[paulsn] maybe this _should_ happen to ensure fairness –
+                  annihilation shouldn't happen if you step on the last cell
+                  of the trail that's about to decay fully?)
+
+                In any case, trail decay is not appropriate anymore. */
                 continue;
             }
 
             let upd = this.#cells[location];
             if (
-                upd.state !== T.CellState.TRAIL
+                upd === undefined // cell has already been decayed via other means
+                || upd.state !== T.CellState.TRAIL
                 || upd.ownerPlayerId !== ownerId
             ) {
                 locations.delete(location);
@@ -231,23 +273,31 @@ export class Grid {
 
         let updated = Object.create(null) as T.CellGrid;
         for (let [locationKey, cell] of Object.entries(this.#queue)) {
-            if (typeof cell === 'number') continue;
+            if (typeof cell === 'number') continue; // locationKey ===  '_count'
             let location = locationKey as T.CubeLocation;
 
-            if (cell.state === T.CellState.FILLED) {
-                this.filled.add(location);
-            } else if (this.filled.has(location)) {
+            if (this.filled.has(location)) {
                 this.filled.delete(location);
             }
 
-            if (cell.state === T.CellState.BLANK) {
+            switch (cell.state) {
+            case T.CellState.BLANK: {
                 delete this.#cells[location];
-            } else {
-                this.#cells[location] = cell;
+                updated[location] = gcellToTcell(cell);
+                break;
             }
-
-            updated[location] = gcellToTcell(cell);
-
+            case T.CellState.TRAIL: {
+                // TODO attempt trail -> filled conversion
+                // TODO apply annihilation if already filled
+                this.#cells[location] = cell;
+                updated[location] = gcellToTcell(cell);
+                break;
+            }
+            case 'tombstone': {
+                // TODO[paulsn] annihilate, mark all trails as blanked
+                break;
+            }
+            }
         }
 
         this.onupdate?.(updated);
