@@ -40,6 +40,11 @@ type GCellTrail = {
     ownerPlayerId: T.Integer,
     color: T.Integer,
 
+    /// number of decay ticks remaining if owned by current player
+    age: T.Integer,
+
+    /// top age when cell entered TRAIL state – used for calculating float repr
+    maxAge: T.Integer,
 };
 type GCellFilled = {
     location: CubeLocation,
@@ -66,7 +71,7 @@ function gcellToTcell(cell: GCell): T.Cell {
         return {
             state: cell.state,
             color: cell.color,
-            age: 1, // TODO[paulsn]
+            age: cell.age / cell.maxAge,
             ownerPlayer: cell.ownerPlayerId,
         };
     }
@@ -178,14 +183,47 @@ export class Grid {
         this.#queue._count += 1;
     }
 
-    setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.Integer) {
+    setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.Integer, age: T.Integer) {
         this.#queue[location] = {
             state: T.CellState.TRAIL,
             location: str_cube(location),
             color: color,
+            age: age,
+            maxAge: age,
             ownerPlayerId: ownerPlayerId,
         };
         this.#queue._count += 1;
+    }
+
+    /// **mutates** locations by removing nodes that will decay on next commit,
+    /// and nodes that are no longer TRAIL or are owned by a different player
+    decayTrail(ownerId: T.PlayerState["id"], locations: Set<T.CubeLocation>) {
+        for (let location of locations) {
+            if (location in this.#queue) {
+                // TODO[paulsn] this is probably incorrect?
+                continue;
+            }
+
+            let upd = this.#cells[location];
+            if (
+                upd.state !== T.CellState.TRAIL
+                || upd.ownerPlayerId !== ownerId
+            ) {
+                locations.delete(location);
+                continue;
+            }
+
+            let newAge = upd.age - 1;
+            if (newAge <= 0) {
+                this.#queue[location] = {
+                    state: T.CellState.BLANK,
+                    location: upd.location,
+                };
+                locations.delete(location);
+                continue;
+            }
+            this.#queue[location] = { ...upd, age: newAge };
+        }
     }
 
     commit() {

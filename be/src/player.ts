@@ -4,15 +4,19 @@ import * as T from '../../types';
 import GRID from './grid';
 import { send } from './index';
 
+const PLAYER_TRAIL_LENGTH = 3;
+
 export class Player {
     id: T.PlayerState["id"];
     conn: WebSocket;
     state: T.PlayerState;
+    decayTrail: Set<T.CubeLocation>;
 
     constructor(conn: WebSocket, state: T.PlayerState) {
         this.conn = conn;
         this.state = state;
         this.id = state.id;
+        this.decayTrail = new Set();
 
         this.handleMessageBase = this.handleMessageBase.bind(this);
         this.conn.on('message', this.handleMessageBase);
@@ -43,10 +47,17 @@ export class Player {
     }
     handleMove(msg: T.MoveMessage) {
         const { location } = msg;
-        GRID.setFilled(this.state.location, this.state.color);
-
         this.state.location = location;
-        GRID.setTrail(location, this.state.color, this.id);
+
+        GRID.decayTrail(this.id, this.decayTrail);
+        GRID.setTrail(
+            location,
+            this.state.color,
+            this.id,
+            // TODO[paulsn] dynamic based on energy
+            PLAYER_TRAIL_LENGTH,
+        );
+        this.decayTrail.add(location);
 
         PLAYERS.broadcastPlayerUpdate();
     }
