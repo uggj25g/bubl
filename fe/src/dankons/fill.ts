@@ -112,11 +112,14 @@ window.addEventListener("resize", () => {
 
 renderer.domElement.addEventListener("mousemove", onMouseMove);
 
-// renderer.domElement.addEventListener("click", () => {
-//   if (selectedHoverHex && !selectedHexes.includes(selectedHoverHex)) {
-//     selectedHoverHex.material = new THREE.MeshStandardMaterial({
-//       color: 0x0000ff,
-//     });
-//     selectedHexes.push(selectedHoverHex);
-//   }
-// });
+renderer.domElement.addEventListener("click", () => {
+  if (selectedHoverHex) {
+    if (selectedHoverHex.cell.state == T.CellState.BLANK) {
+      hexMap.setCell(selectedHoverHex.location, {
+        state: T.CellState.TRAIL,
+      });
+    } else if (selectedHoverHex.cell.state == T.CellState.TRAIL) {
+      hexMap.setCell(selectedHoverHex.location, undefined);
+    }
+  }
+});

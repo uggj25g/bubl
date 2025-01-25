@@ -139,10 +139,95 @@ export class HexMap {
   public setCell(location: T.CubeLocation, cell: Cell | undefined) {
     if (cell) {
       this.map.set(location, cell);
+      this.callbacks.forEach((e) => e(location, cell));
+      if (cell.state == T.CellState.TRAIL) {
+        this.detectContour(location);
+      }
     } else {
       this.map.delete(location);
+      this.callbacks.forEach((e) => e(location, cell));
     }
-    this.callbacks.forEach((e) => e(location, cell));
+  }
+
+  private detectContour(newCellLocation: T.CubeLocation): void {
+    console.log(`detect contour begin @ ${newCellLocation}`);
+
+    const knownPaths = new Map<T.CubeLocation, T.CubeLocation[]>();
+    knownPaths.set(newCellLocation, []);
+
+    const bfs = (destination: T.CubeLocation): T.CubeLocation[][] => {
+      const queue: T.CubeLocation[][] = [[destination]];
+      const paths: T.CubeLocation[][] = [];
+
+      while (queue.length > 0) {
+        const path = queue[0];
+        const last = path[path.length - 1];
+        const coord = CubeCoordinates.from_string(last);
+
+        if (path.length > 1) {
+          const toLast = knownPaths.get(last);
+          if (toLast) {
+            // If the other path contains any other node from this path,
+            // then it's invalid as it would involve visiting a cell twice
+            const reversed = [...toLast].reverse().splice(1);
+            const intersection = path.find(
+              (e) => e != destination && reversed.find((r) => r == e) != null,
+            );
+            if (intersection != null) {
+              console.log(
+                `paths ${path} & ${reversed} did intersect at ${intersection} so it's not valid`,
+              );
+            } else {
+              console.log(`found node with path ${toLast}, joining to ${path}`);
+              // A path already exists, let's merge them together to get the final cycle
+              // return [...path, ...reversed];
+              paths.push([...path, ...reversed]);
+              queue.splice(0, 1);
+              continue;
+            }
+          } else {
+            knownPaths.set(last, path);
+          }
+        }
+
+        // Get unvisited neighbors
+        let next: T.CubeLocation[] = [
+          coord.translated(CubeCoordinates.RIGHT).to_string(),
+          coord.translated(CubeCoordinates.BOTTOM_RIGHT).to_string(),
+          coord.translated(CubeCoordinates.BOTTOM_LEFT).to_string(),
+          coord.translated(CubeCoordinates.LEFT).to_string(),
+          coord.translated(CubeCoordinates.TOP_LEFT).to_string(),
+          coord.translated(CubeCoordinates.TOP_RIGHT).to_string(),
+        ];
+        // Filter out invalid paths
+        next = next.filter((e) => {
+          if (path.indexOf(e) >= 0) {
+            console.log(`${e} already in path ${path}`);
+            return false;
+          }
+          let cell = this.get_cell(e);
+          if (!cell) return false;
+          return cell.state != T.CellState.BLANK;
+        });
+        for (const n of next) {
+          queue.push([...path, n]);
+        }
+        queue.splice(0, 1);
+      }
+
+      return paths;
+    };
+
+    const paths = bfs(newCellLocation);
+    for (const p of paths) {
+      console.log(`a path: ${p} with length ${p.length}`);
+      for (const c of p) {
+        this.setCell(c, {
+          state: T.CellState.FILLED,
+        });
+      }
+    }
+    // console.log(`final path: ${path} with length ${path?.length}`);
   }
 }
 
@@ -193,6 +278,14 @@ export class CubeCoordinates {
     this.q += other.q;
     this.r += other.r;
     this.s += other.s;
+  }
+
+  public translated(other: CubeCoordinates): CubeCoordinates {
+    return new CubeCoordinates(
+      this.q + other.q,
+      this.r + other.r,
+      this.s + other.s,
+    );
   }
 
   public static from_string(str: CubeCoordStr): CubeCoordinates {
