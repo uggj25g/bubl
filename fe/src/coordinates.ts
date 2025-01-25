@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import * as T from '../../types';
-import { HexagonMesh } from "./visual/hegaxon/flat";
 import Queue from "yocto-queue";
+import { HexagonFlatGeometry, HexagonMesh } from "./visual/hegaxon/flat";
+
 
 const SIN60 = Math.sqrt(3) / 2;
 
@@ -13,19 +14,34 @@ const HOVER_MATERIAL = new THREE.MeshStandardMaterial({
   color: 0xaaaaaa,
 });
 
-const FILLED_MATERIAL = new THREE.MeshStandardMaterial({
-  color: 0xff0000,
-});
+const FILLED_MATERIALS: THREE.Material[] = [
+  new THREE.MeshStandardMaterial({
+    color: 0xff8080,
+  }),
+  new THREE.MeshStandardMaterial({
+    color: 0x8080ff,
+  }),
+];
 
-const TRAIL_MATERIAL = new THREE.MeshStandardMaterial({
-  color: 0xff00ff,
-});
+const TRAIL_MATERIALS: THREE.Material[] = [
+  new THREE.MeshStandardMaterial({
+    color: 0xff0000,
+  }),
+  new THREE.MeshStandardMaterial({
+    color: 0x0000ff,
+  }),
+];
+
+const FLAT_GEOMETRY = new HexagonFlatGeometry();
+
+const RAISED_GEOMETRY = new HexagonFlatGeometry(0.5);
 
 export type CubeCoordStr = T.CubeLocation;
 
 export type Cell = {
   // location: T.CubeLocation;
   state: T.CellState;
+  color?: T.Integer;
 };
 
 export const BLANK_CELL: Cell = {
@@ -89,6 +105,9 @@ export class VisualCell extends THREE.Group {
 
   public updateCell(cell: Cell) {
     this.cell = cell;
+    if (cell.state !== T.CellState.BLANK) {
+      this.hover = false;
+    }
     this.updateObject();
   }
 
@@ -100,18 +119,25 @@ export class VisualCell extends THREE.Group {
 
     if (this.hover) {
       this.mesh.material = HOVER_MATERIAL;
+      this.mesh.geometry = RAISED_GEOMETRY;
     } else {
       if (this.cell.state == T.CellState.TRAIL) {
-        this.mesh.material = TRAIL_MATERIAL;
+        this.mesh.material = TRAIL_MATERIALS[this.cell.color ?? 0];
+        this.mesh.geometry = RAISED_GEOMETRY;
       } else if (this.cell.state == T.CellState.FILLED) {
-        this.mesh.material = FILLED_MATERIAL;
+        this.mesh.material = FILLED_MATERIALS[this.cell.color ?? 0];
+        this.mesh.geometry = RAISED_GEOMETRY;
       } else {
         this.mesh.material = BASE_MATERIAL;
+        this.mesh.geometry = FLAT_GEOMETRY;
       }
     }
   }
 
   public setHover(value: boolean) {
+    if (this.cell.state !== T.CellState.BLANK) {
+      return;
+    }
     this.hover = value;
     this.updateObject();
   }

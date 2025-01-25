@@ -18,7 +18,7 @@ export class PlayerManager {
     SOCKET.callbacks.onPlayerDespawn = (e) => this.despawnRemotePlayer(e);
   }
 
-  public spawn_client_player(state: T.PlayerState): void {
+  public spawn_client_player(state: T.SelfPlayerState): void {
     const player = new Player(state);
     this.scene.add(player);
     this.client_player = player;
@@ -43,13 +43,13 @@ export class PlayerManager {
     });
   }
 
-  public spawnRemotePlayer(state: T.PlayerState): void {
+  public spawnRemotePlayer(state: T.RemotePlayerState): void {
     const player = new Player(state);
     this.remote_players.push(player);
     this.scene.add(player);
   }
 
-  public updateRemotePlayer(state: T.PlayerState): void {
+  public updateRemotePlayer(state: T.RemotePlayerState): void {
     console.log(`got remote update: ${JSON.stringify(state)}`);
     const player = this.remote_players.find((p) => p.id === state.id);
     if (!player) {
@@ -58,7 +58,7 @@ export class PlayerManager {
     player.setLocation(state.location);
   }
 
-  public despawnRemotePlayer(state: T.PlayerState): void {
+  public despawnRemotePlayer(state: T.RemotePlayerState): void {
     const player = this.remote_players.find((p) => p.id === state.id);
     if (!player) {
       return;
@@ -74,7 +74,8 @@ export class Player extends THREE.Group {
   mesh: THREE.Mesh;
   cubepos: coordinates.CubeCoordinates;
 
-  constructor(state: T.PlayerState) {
+  // TODO[paulsn] type discards energy information for client player
+  constructor(state: T.RemotePlayerState) {
     super();
     this.remote_id = state.id;
     this.color = state.color;
@@ -105,7 +106,7 @@ export class Player extends THREE.Group {
     SOCKET.setLocation(this.cubepos.to_string());
   }
 
-  public static remote_spawn(state: T.PlayerState): void {}
+  public static remote_spawn(state: T.RemotePlayerState): void {}
 
-  public remote_move(state: T.PlayerState): void {}
+  public remote_move(state: T.RemotePlayerState): void {}
 }
