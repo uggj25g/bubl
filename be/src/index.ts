@@ -38,7 +38,7 @@ GRID.onupdate = (diff: T.CellGrid) => {
     for (let ws of players.keys()) {
         send(ws, [T.MessageType.UPDATE, msg]);
     }
-    console.log('[grid] (ticked)')
+    console.log('[grid] (ticked)', diff)
 }
 
 function decodeMessage(msg: any): T.ClientMessage | null {
@@ -94,6 +94,13 @@ wss.on('connection', (ws) => {
         switch (msg[0]) {
         case T.MessageType.MOVE: {
             const { location } = msg[1];
+            let oldCell: T.CellFilled = {
+                state: T.CellState.FILLED,
+                color: playerState.color,
+                age: 1,
+            };
+            GRID.set(playerState.location, oldCell);
+
             playerState.location = location;
             let newCell: T.CellTrail = {
                 state: T.CellState.TRAIL,
