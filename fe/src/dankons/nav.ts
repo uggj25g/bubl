@@ -32,7 +32,7 @@ SOCKET.init.then(
 );
 
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth - 50, window.innerHeight - 50);
+renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });

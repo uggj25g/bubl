@@ -1,7 +1,7 @@
 //#region Scaffolding
 
-export type ProtocolVersion = 2;
-export const PROTOCOL_VERSION = 2 as ProtocolVersion;
+export type ProtocolVersion = 3;
+export const PROTOCOL_VERSION = 3 as ProtocolVersion;
 
 export enum MessageType {
     INIT = "INIT",
@@ -31,13 +31,13 @@ export type InitMessage = {
     protocolVersion: ProtocolVersion,
     self: PlayerState,
     others: Array<PlayerState>,
-    grid: CellGrid,
+    grid: CompressedCellGrid,
 }
 export type UpdateMessage = {
     players: Array<PlayerState>,
 
     /// contains only changes since previous update message, not the full grid
-    gridDiff: CellGrid,
+    gridDiff: CompressedCellGrid,
 }
 export type MoveMessage = {
     location: CubeLocation,
@@ -102,7 +102,99 @@ export type CellFilled = CellCommon & {
 
 export type Cell = CellBlank | CellTrail | CellFilled;
 
-// TODO more efficient organized representation (map by coordinate?)
 export type CellGrid = Record<CubeLocation, Cell>;
+
+//#endregion
+
+//#region Compressed grid
+
+export enum CompressedCellState {
+    BLANK = 0,
+    TRAIL = 1,
+    FILLED = 2,
+}
+
+export type CompressedCell = [
+    coords: CubeLocation,
+    state: CompressedCellState,
+    color?: Integer,
+    /// 0...255
+    age?: Integer,
+    ownerPlayer?: Integer,
+];
+export type CompressedCellGrid = Array<CompressedCell>;
+
+export function compressGrid(grid: CellGrid): CompressedCellGrid {
+    let re = [] as Array<CompressedCell>;
+
+    for (let [locationKey, cell] of Object.entries(grid)) {
+        let location = locationKey as CubeLocation;
+        switch (cell.state) {
+        case CellState.BLANK: {
+            re.push([location, CompressedCellState.BLANK]);
+            break;
+        }
+        case CellState.TRAIL: {
+            re.push([
+                location,
+                CompressedCellState.TRAIL,
+                cell.color,
+                (cell.age * 255) | 0,
+                cell.ownerPlayer,
+            ]);
+            break;
+        }
+        case CellState.FILLED: {
+            re.push([
+                location,
+                CompressedCellState.FILLED,
+                cell.color,
+                (cell.age * 255) | 0,
+            ]);
+            break;
+        }
+        }
+    }
+
+    return re;
+}
+
+export function decompressGrid(grid: CompressedCellGrid): CellGrid {
+    let re = Object.create(null) as CellGrid;
+
+    for (let cell of grid) {
+        const location = cell[0];
+        switch (cell[1]) {
+        case CompressedCellState.BLANK: {
+            let reCell: CellBlank = { state: CellState.BLANK };
+            re[location] = reCell;
+            break;
+        }
+
+        case CompressedCellState.TRAIL: {
+            let reCell: CellTrail = {
+                state: CellState.TRAIL,
+                color: cell[2]!,
+                age: cell[3]! / 255,
+                ownerPlayer: cell[4]!,
+            };
+            re[location] = reCell;
+            break;
+        }
+
+        case CompressedCellState.FILLED: {
+            let reCell: CellFilled = {
+                state: CellState.FILLED,
+                color: cell[2]!,
+                age: cell[3]! / 255,
+            };
+            re[location] = reCell;
+            break;
+        }
+        }
+    }
+
+    return re;
+}
 
 //#endregion
