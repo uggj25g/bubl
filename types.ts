@@ -1,7 +1,7 @@
 //#region Scaffolding
 
-export type ProtocolVersion = 1;
-export const PROTOCOL_VERSION = 1 as ProtocolVersion;
+export type ProtocolVersion = 2;
+export const PROTOCOL_VERSION = 2 as ProtocolVersion;
 
 export enum MessageType {
     INIT = "INIT",
@@ -31,11 +31,13 @@ export type InitMessage = {
     protocolVersion: ProtocolVersion,
     self: PlayerState,
     others: Array<PlayerState>,
-    grid: Array<Cell>,
+    grid: CellGrid,
 }
 export type UpdateMessage = {
     players: Array<PlayerState>,
-    gridDiff: Array<Cell>,
+
+    /// contains only changes since previous update message, not the full grid
+    gridDiff: CellGrid,
 }
 export type MoveMessage = {
     location: CubeLocation,
@@ -48,10 +50,10 @@ export type MoveMessage = {
 /// guaranteed to be a 53-bit safe integer
 export type Integer = number;
 
-export type CubeLocation = [q: Integer, r: Integer, s: Integer];
-export const cube = (q: Integer, r: Integer, s: Integer) => [q, r, s] as CubeLocation;
-export const cube_eq = (a: CubeLocation, b: CubeLocation) =>
-    a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+export type CubeLocation = `${Integer},${Integer},${Integer}`;
+export const cube = (q: Integer, r: Integer, s: Integer): CubeLocation =>
+    `${q},${r},${s}`;
+export const cube_eq = (a: CubeLocation, b: CubeLocation) => a === b;
 
 export type PlayerState = {
     id: Integer,
@@ -75,7 +77,7 @@ export enum CellState {
 }
 
 export type CellCommon = {
-    location: CubeLocation,
+    // location: CubeLocation, // implicit based on containing structure
     state: CellState,
 };
 export type CellBlank = CellCommon & { state: CellState.BLANK };
@@ -101,6 +103,6 @@ export type CellFilled = CellCommon & {
 export type Cell = CellBlank | CellTrail | CellFilled;
 
 // TODO more efficient organized representation (map by coordinate?)
-export type CellGrid = Array<Cell>;
+export type CellGrid = Record<CubeLocation, Cell>;
 
 //#endregion
