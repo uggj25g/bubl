@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import * as T from '../../types';
-import { HexagonMesh } from "./visual/hegaxon/flat";
+import { HexagonFlatGeometry, HexagonMesh } from "./visual/hegaxon/flat";
 
 const SIN60 = Math.sqrt(3) / 2;
 
@@ -19,6 +19,10 @@ const FILLED_MATERIAL = new THREE.MeshStandardMaterial({
 const TRAIL_MATERIAL = new THREE.MeshStandardMaterial({
   color: 0xff00ff,
 });
+
+const FLAT_GEOMETRY = new HexagonFlatGeometry();
+
+const RAISED_GEOMETRY = new HexagonFlatGeometry(0.5);
 
 export type CubeCoordStr = T.CubeLocation;
 
@@ -99,13 +103,17 @@ export class VisualCell extends THREE.Group {
 
     if (this.hover) {
       this.mesh.material = HOVER_MATERIAL;
+      this.mesh.geometry = RAISED_GEOMETRY;
     } else {
       if (this.cell.state == T.CellState.TRAIL) {
         this.mesh.material = TRAIL_MATERIAL;
+        this.mesh.geometry = RAISED_GEOMETRY;
       } else if (this.cell.state == T.CellState.FILLED) {
         this.mesh.material = FILLED_MATERIAL;
+        this.mesh.geometry = RAISED_GEOMETRY;
       } else {
         this.mesh.material = BASE_MATERIAL;
+        this.mesh.geometry = FLAT_GEOMETRY;
       }
     }
   }

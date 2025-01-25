@@ -15,15 +15,16 @@ export class HexagonMesh extends THREE.Mesh {
   }
 } 
 
-class HexagonFlatGeometry extends THREE.ExtrudeGeometry {
-  constructor() {
+export class HexagonFlatGeometry extends THREE.ExtrudeGeometry {
+  constructor(depth: number = 0.1) {
     const extrudeGeometryOptions: THREE.ExtrudeGeometryOptions = {
       steps: 2,
-      depth: 0.1,
+      depth: depth,
       bevelEnabled: false,
     }
 
     super(new HexagonShape(), extrudeGeometryOptions);
+    super.rotateX(Math.PI);
   }
 }
 
