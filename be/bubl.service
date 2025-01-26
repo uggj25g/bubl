@@ -1,0 +1,11 @@
+[Unit]
+Description=bubl
+
+[Service]
+ExecStart=/usr/bin/npm run run-prod
+WorkingDirectory=/var/www/sites/squidcore.nl/game/be
+User=http
+Group=http
+
+[Install]
+WantedBy=multi-user.target
