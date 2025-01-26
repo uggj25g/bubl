@@ -11,10 +11,12 @@ import { Environment } from "./visual/environment/scene";
 import { InputManager } from "./input";
 import { ConnectUiManager } from "./connect_ui";
 import { HudManager } from "./hud";
+import { EventFxManager } from "./event_fx";
 
 const environment = new Environment();
 const inputManager = new InputManager(false);
 const hudManager = new HudManager();
+const eventFxManager = new EventFxManager(environment.scene);
 const rpm = new PlayerManager(environment.scene, inputManager);
 const connectUiManager = new ConnectUiManager();
 connectUiManager.playCallbacks.push((name, color) => {
@@ -66,6 +68,7 @@ SOCKET.init.then(
       _onTeamState([t]);
     }
     SOCKET.callbacks.onTeamsUpdate = _onTeamState;
+    SOCKET.callbacks.onGridEvent = (e) => eventFxManager.onGridEvent(e);
 
     // Spawn in existing remote players
     for (const [_, p] of SOCKET.players) {

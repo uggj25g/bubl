@@ -93,10 +93,35 @@ body {
 
 .hud-nametag-red {
   color: #FF0000;
-  text-shadow: 0px -1px 10px #FF0000, 0px 2px 5px #FFFFFF;
+  text-shadow: 0px -1px 10px #FF0000, 0px 0px 5px #FFFFFF;
 }
 
 .hud-nametag-blue {
   color: #0090FF;
-  text-shadow: 0px -1px 10px #0090FF, 0px 2px 5px #000000;
+  text-shadow: 0px -1px 10px #0090FF, 0px 0px 5px #000000;
+}
+
+.hud-gridevent {
+  font-size: 2rem;
+  font-weight: 600; 
+  text-align: center;
+  color: white;
+  text-shadow: 0px 0px 5px #000000;
+}
+
+.hud-gridevent-red-score {
+  color: #FF0000;
+  text-shadow: 0px -1px 10px #FF0000, 0px 0px 6px #FFFFFF;
+}
+
+.hud-gridevent-blue-score {
+  color: #0090FF;
+  text-shadow: 0px -1px 10px #0090FF, 0px 0px 6px #000000;
+}
+
+.hud-gridevent-annihilate {
+  font-size: 1rem;
+  font-weight: 400; 
+  color: #ff8000;
+  text-shadow: 0px -1px 10px #ff0000, 0px 2px 5px #000000;
 }
