@@ -183,6 +183,7 @@ class Players {
                 self: player.state!,
                 others: otherPlayers,
                 grid: T.compressGrid(GRID.cellGrid),
+                teams: TEAMS.state,
             },
         ]);
 
@@ -255,6 +256,10 @@ class Teams {
     constructor() {
         this.scores = new Map();
         this.dirty = new Set();
+    }
+
+    get state(): T.TeamState[] {
+        return Array.from(this.scores).map(([color, score]) => ({ color, score }));
     }
 
     getScore(team: T.Color) {

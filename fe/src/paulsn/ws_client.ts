@@ -99,6 +99,7 @@ window.SOCKET = SOCKET;
         SOCKET.self = msg.self;
         SOCKET.grid = T.decompressGrid(msg.grid);
         SOCKET.players = new Map(msg.others.map((p) => [p.id, p]));
+        SOCKET.teams = new Map(msg.teams.map(st => [st.color, st]));
         def.resolve([SOCKET.self, SOCKET.grid]);
 
         SOCKET.callbacks.onSelfUpdate?.(SOCKET.self);

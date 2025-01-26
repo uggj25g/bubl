@@ -1,7 +1,7 @@
 //#region Scaffolding
 
-export type ProtocolVersion = 7;
-export const PROTOCOL_VERSION = 7 as ProtocolVersion;
+export type ProtocolVersion = 8;
+export const PROTOCOL_VERSION = 8 as ProtocolVersion;
 
 export enum MessageType {
     INIT = "INIT",
@@ -53,6 +53,7 @@ export type InitMessage = {
     self: SelfPlayerState,
     others: Array<RemotePlayerState>,
     grid: CompressedCellGrid,
+    teams: TeamState[],
 }
 export type UpdatePlayerMessage = {
     id: PlayerID;
