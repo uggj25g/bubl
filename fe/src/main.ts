@@ -10,9 +10,11 @@ import { PlayerManager } from "./player";
 import { Environment } from "./visual/environment/scene";
 import { InputManager } from "./input";
 import { ConnectUiManager } from "./connect_ui";
+import { HudManager } from "./hud";
 
 const environment = new Environment();
 const inputManager = new InputManager(false);
+const hudManager = new HudManager();
 const rpm = new PlayerManager(environment.scene, inputManager);
 const connectUiManager = new ConnectUiManager();
 connectUiManager.playCallbacks.push(() => {
@@ -31,10 +33,13 @@ SOCKET.init.then(
     console.log("socket init!");
     const p = x[0];
     rpm.spawn_client_player(p);
-    rpm.client_player?.move(coordinates.CubeCoordinates.from_string(p.location));
+    rpm.client_player?.move(
+      coordinates.CubeCoordinates.from_string(p.location),
+    );
     SOCKET.callbacks.onSelfUpdate = (player) => {
       environment.cellManager.offsetActiveCells(player.location);
-    }
+      hudManager.setEnergy(player.energy);
+    };
 
     SOCKET.callbacks.onCellUpdate = (coord, cell) => {
       environment.hexMap.setCell(coord.to_string(), cell);
@@ -44,7 +49,7 @@ SOCKET.init.then(
 
     for (let [locationKey, cell] of Object.entries(g)) {
       let location = locationKey as T.CubeLocation;
-      environment.hexMap.setCell(location, cell)
+      environment.hexMap.setCell(location, cell);
     }
   },
   (err) => {
