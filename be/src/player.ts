@@ -207,7 +207,6 @@ class Players {
 
     broadcastPlayerUpdate(subject: Player, excludeSelf: boolean = false) {
         let state = subject.remoteState;
-        if (!state) return;
         const msg: T.UpdatePlayerMessage = {
             id: subject.id,
             state,
