@@ -7,7 +7,7 @@ import * as input from "./input";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { Timer } from "three/addons/misc/Timer.js";
 import JEASINGS from "jeasings";
-import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/Addons.js";
+import { CSS2DObject } from "three/examples/jsm/Addons.js";
 export class PlayerManager {
   scene: THREE.Scene;
   inputManager: input.InputManager;
@@ -41,9 +41,7 @@ export class PlayerManager {
 
   public updateRemotePlayer(state: T.RemotePlayerState): void {
     console.log(`got remote update: ${JSON.stringify(state)}`);
-    const player = this.remote_players.find(
-      (p) => p.remote_state.id === state.id,
-    );
+    const player = this.remote_players.find((p) => p.remote_id === state.id);
     if (!player) {
       return;
     }
@@ -52,15 +50,13 @@ export class PlayerManager {
 
   public despawnRemotePlayer(state: T.RemotePlayerState): void {
     console.log(`got despawn color: ${JSON.stringify(state)}`);
-    const player = this.remote_players.find(
-      (p) => p.remote_state.id === state.id,
-    );
+    const player = this.remote_players.find((p) => p.remote_id === state.id);
     if (!player) {
       return;
     }
     this.scene.remove(player);
     this.remote_players = this.remote_players.filter(
-      (p) => p.remote_state.id === state.id,
+      (p) => p.remote_id === state.id,
     );
   }
 }
@@ -75,7 +71,9 @@ interface TransitionData {
 }
 
 export class Player extends THREE.Group {
-  remote_state: T.RemotePlayerState;
+  remote_id: T.Integer;
+  color: T.Integer;
+  remote_name: string;
 
   mesh: THREE.Group = new THREE.Group();
   cubepos: coordinates.CubeCoordinates;
@@ -92,7 +90,9 @@ export class Player extends THREE.Group {
   constructor(state: T.RemotePlayerState) {
     super();
     this.loadModel();
-    this.remote_state = state;
+    this.remote_id = state.id;
+    this.color = state.color;
+    this.remote_name = state.name;
     this.cubepos = coordinates.CubeCoordinates.from_string(state.location);
     this.mesh.position.y = 1;
     this.add(this.mesh);
@@ -258,6 +258,7 @@ export class Player extends THREE.Group {
 
   private setColor(color: T.Integer) {
     console.log(`set player color: ${color}`);
+    this.color = color;
     if (color == 0) {
       this.nametag.element.classList.remove("hud-nametag-blue");
       this.nametag.element.classList.add("hud-nametag-red");
@@ -271,6 +272,7 @@ export class Player extends THREE.Group {
   }
 
   private setName(name: string) {
+    this.remote_name = name;
     console.log(`set player name: ${name}`);
     this.nametag.element.innerText = name;
   }
@@ -287,14 +289,12 @@ export class Player extends THREE.Group {
       this.setLocation(new_location);
     }
     // If color is different, change color
-    console.log(`aaaa: ${state.color} ${this.remote_state.color}`);
-    if (state.color != this.remote_state.color) {
+    if (state.color != this.color) {
       this.setColor(state.color);
     }
     // If name is different, rebuild name tag
-    if (state.name != this.remote_state.name) {
+    if (state.name != this.remote_name) {
       this.setName(state.name);
     }
-    this.remote_state = state;
   }
 }

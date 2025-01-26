@@ -110,66 +110,78 @@ window.SOCKET = SOCKET;
         }
     };
 
-    function playerHasDiff(p1: T.RemotePlayerState, p2: T.RemotePlayerState): boolean {
-        // assumes that id and color don't change
-        return p1.location !== p2.location
-            || p1.name !== p2.name;
+    function playerHasDiff(
+      p1: T.RemotePlayerState,
+      p2: T.RemotePlayerState,
+    ): boolean {
+      // assumes that id doesn't change
+      return (
+        p1.location !== p2.location ||
+        p1.name !== p2.name ||
+        p1.color !== p2.color
+      );
     }
 
     SOCKET.handlers[T.MessageType.UPDATE_GRID] = (msg_) => {
-        let msg = msg_[1] as T.UpdateGridMessage;
+      let msg = msg_[1] as T.UpdateGridMessage;
 
-        for (let [locationKey, cell] of Object.entries(T.decompressGrid(msg.gridDiff))) {
-            let location = locationKey as T.CubeLocation;
-            SOCKET.callbacks.onCellUpdate?.(CubeCoordinates.from_string(location), cell);
-            if (cell.state === T.CellState.BLANK) {
-                delete SOCKET.grid[location];
-            } else {
-                SOCKET.grid[location] = cell;
-            }
+      for (let [locationKey, cell] of Object.entries(
+        T.decompressGrid(msg.gridDiff),
+      )) {
+        let location = locationKey as T.CubeLocation;
+        SOCKET.callbacks.onCellUpdate?.(
+          CubeCoordinates.from_string(location),
+          cell,
+        );
+        if (cell.state === T.CellState.BLANK) {
+          delete SOCKET.grid[location];
+        } else {
+          SOCKET.grid[location] = cell;
         }
+      }
     };
 
     SOCKET.handlers[T.MessageType.UPDATE_PLAYER] = (msg_) => {
-        let msg = msg_[1] as T.UpdatePlayerMessage;
+      let msg = msg_[1] as T.UpdatePlayerMessage;
 
-        // self?
-        if (msg.id === SOCKET.self.id) {
-            // assume update is not spurious and something has already changed
-            // why would the server do otherwise
-            // also own state can NOT be null at this point
-            let state = msg.state as T.SelfPlayerState;
-            SOCKET.self = state;
-            SOCKET.callbacks.onSelfUpdate?.(state);
-            return;
-        }
+      // self?
+      if (msg.id === SOCKET.self.id) {
+        // assume update is not spurious and something has already changed
+        // why would the server do otherwise
+        // also own state can NOT be null at this point
+        let state = msg.state as T.SelfPlayerState;
+        SOCKET.self = state;
+        SOCKET.callbacks.onSelfUpdate?.(state);
+        return;
+      }
 
-        // player despawn?
-        if (msg.state === null) {
-            if ( ! SOCKET.players.has(msg.id)) return; // spurious?
-            let lastState = SOCKET.players.get(msg.id)!;
-            SOCKET.players.delete(msg.id);
-            SOCKET.callbacks.onPlayerDespawn?.(lastState);
-            return;
-        }
-
-        // hereonout state is always REMOTE
-        const state = msg.state as T.RemotePlayerState;
-
-        // new player?
-        if ( ! SOCKET.players.has(msg.id)) {
-            SOCKET.callbacks.onPlayerSpawn?.(state);
-            SOCKET.players.set(msg.id, state);
-            return;
-        }
-
-        // updating player
+      // player despawn?
+      if (msg.state === null) {
+        if (!SOCKET.players.has(msg.id)) return; // spurious?
         let lastState = SOCKET.players.get(msg.id)!;
-        if ( ! playerHasDiff(lastState, state)) return;
+        SOCKET.players.delete(msg.id);
+        SOCKET.callbacks.onPlayerDespawn?.(lastState);
+        return;
+      }
 
-        lastState.name = state.name;
-        lastState.location = state.location;
-        SOCKET.callbacks.onPlayerUpdate?.(lastState);
+      // hereonout state is always REMOTE
+      const state = msg.state as T.RemotePlayerState;
+
+      // new player?
+      if (!SOCKET.players.has(msg.id)) {
+        SOCKET.callbacks.onPlayerSpawn?.(state);
+        SOCKET.players.set(msg.id, state);
+        return;
+      }
+
+      // updating player
+      let lastState = SOCKET.players.get(msg.id)!;
+      if (!playerHasDiff(lastState, state)) return;
+
+      lastState.color = state.color;
+      lastState.name = state.name;
+      lastState.location = state.location;
+      SOCKET.callbacks.onPlayerUpdate?.(lastState);
     };
 
     SOCKET.handlers[T.MessageType.UPDATE_TEAMS] = (msg_) => {
