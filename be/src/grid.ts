@@ -168,7 +168,7 @@ export class Grid {
         }
         let leftover = boundary.q + boundary.r + boundary.s;
         for (let axis of ['q', 'r', 's'] as Array<keyof CubeLocation>) {
-            if (boundary[axis] === 0) {
+            if (direction[axis] === 0) {
                 boundary[axis] = -leftover;
             }
         }
