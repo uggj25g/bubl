@@ -3,7 +3,7 @@ import * as T from '../../types';
 
 import GRID from './grid';
 import { send } from './index';
-import { choose, ANIMALS, assert } from './util';
+import { choose, ANIMALS, assert, debug_log } from './util';
 
 const INITIAL_PLAYER_TRAIL_LENGTH = 6;
 const MAX_COLORS = 2;
@@ -71,7 +71,7 @@ export class Player {
     }
 
     handleMessage(msg: T.ClientMessage) {
-        console.log('[%d msg] %o', this.id, msg);
+        debug_log('[%d msg] %o', this.id, msg);
         switch (msg[0]) {
         case T.MessageType.MOVE: return this.handleMove(msg[1]);
         case T.MessageType.RENAME: return this.handleRename(msg[1]);
@@ -104,12 +104,12 @@ export class Player {
     handleChangeColor(msg: T.ChangeColorMessage) {
         assert(this.state !== null);
         if (this.hasMoved) {
-            console.log('[%d msg] change color DENIED: movement already happened', this.id);
+            debug_log('[%d msg] change color DENIED: movement already happened', this.id);
             PLAYERS.disconnect(this);
             return;
         }
         if (msg.color >= MAX_COLORS) {
-            console.log('[%d msg] change color DENIED: color %d out of bounds', this.id, msg.color);
+            debug_log('[%d msg] change color DENIED: color %d out of bounds', this.id, msg.color);
             PLAYERS.disconnect(this);
             return;
         }
@@ -129,7 +129,7 @@ class Players {
         this.#byId = new Map();
 
         GRID.onupdate = (diff) => {
-            console.log('[grid] update', diff);
+            debug_log('[grid] update', diff);
             this.broadcastGridUpdate(diff);
         };
     }
@@ -166,7 +166,7 @@ class Players {
         this.#byWs.set(conn, player);
         this.#byId.set(id, player);
 
-        console.log('[%d connect]', id);
+        debug_log('[%d connect]', id);
 
         conn.once('close', () => {
             this.disconnect(player, true);
@@ -201,7 +201,7 @@ class Players {
         player.state = null;
         GRID.clearOwnedTrail(player.id, player.decayTrail);
         this.broadcastPlayerUpdate(player, true);
-        console.log('[%d %sdisconnect]', player.id, graceful ? '' : 'force ');
+        debug_log('[%d %sdisconnect]', player.id, graceful ? '' : 'force ');
         player.dispose();
     }
 

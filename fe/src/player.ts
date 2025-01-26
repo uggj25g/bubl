@@ -8,6 +8,9 @@ import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { Timer } from "three/addons/misc/Timer.js";
 import JEASINGS from "jeasings";
 import { CSS2DObject } from "three/examples/jsm/Addons.js";
+
+import PLAYER_MODEL_URL from '../playermodel.fbx?url';
+
 export class PlayerManager {
   scene: THREE.Scene;
   inputManager: input.InputManager;
@@ -182,7 +185,7 @@ export class Player extends THREE.Group {
 
   private loadModel() {
     const loader = new FBXLoader();
-    loader.load("/playermodel.fbx", (fbx) => {
+    loader.load(PLAYER_MODEL_URL, (fbx) => {
       console.log("Loaded");
       fbx.scale.setScalar(0.05);
       fbx.rotateY(11);

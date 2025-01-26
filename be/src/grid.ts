@@ -1,6 +1,6 @@
 import * as T from '../../types';
 import { annihilate, fill, cube_neigh, cube_add, cube_mul, cube_radius, GExtent, newExtent } from './grid_algo';
-import { assert, choose } from './util';
+import { assert, choose, debug_log } from './util';
 import { TEAMS, PLAYERS } from './player';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
@@ -557,7 +557,7 @@ export class Grid {
             extent.extend(gcell.location);
         }
         this.#extent = extent.finalize();
-        console.log('[grid] updated extent: %s', this.#extent);
+        debug_log('[grid] updated extent: %s', this.#extent);
     }
 
     flush(_tick: number) {
