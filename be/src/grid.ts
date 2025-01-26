@@ -1,5 +1,5 @@
 import * as T from '../../types';
-import { annihilate, fill, cube_neigh } from './grid_algo';
+import { annihilate, fill, cube_neigh, cube_radius } from './grid_algo';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
 /// ... milliseconds
@@ -14,6 +14,8 @@ const CELL_FILLED_MAX_AGE_TICKS = 10;
 
 /// Grid will perform a Vacuum Tick every ... Commit Ticks
 const GRID_VACUUM_PER_N_COMMIT_TICKS = 100;
+
+const PLAYER_REVIVE_RADIUS = 2;
 
 export type CubeLocation = { q: T.Integer, r: T.Integer, s: T.Integer };
 export const cube = (q: T.Integer, r: T.Integer, s: T.Integer) => ({ q, r, s });
@@ -103,11 +105,16 @@ const newQueue = (): GQueue => {
     return queue;
 }
 
-export type GCellAction = GCellBlank | GCellTrail | GCellFilled | GCellTombstone;
+export type GCellAction = GCellBlank | GCellTrail | GCellFilled
+    | GCellTombstone | GCellRevive;
 export type GCellTombstone = {
     location: CubeLocation,
     state: 'tombstone',
     originalColor: T.Integer,
+};
+export type GCellRevive = {
+    location: CubeLocation,
+    state: 'revive',
 };
 
 export type GExtent = {
@@ -259,6 +266,23 @@ export class Grid {
         this.filled.add(location);
     }
 
+    /// reduce decay for cells in a radius around player
+    reviveAround(location: T.CubeLocation, color: T.Integer) {
+        for (let pos of cube_radius(location, PLAYER_REVIVE_RADIUS)) {
+            if (this.#queue[pos] !== undefined) continue;
+            let curr = this.#cells[pos];
+            if (
+                ! curr
+                || curr.state !== T.CellState.FILLED
+                || curr.color !== color
+            ) {
+                continue;
+            }
+
+            this.#queue[pos] = { location: str_cube(pos), state: 'revive' };
+        }
+    }
+
     /// **mutates** locations by removing nodes that will decay on next commit,
     /// and nodes that are no longer TRAIL or are owned by a different player
     decayTrail(ownerId: T.PlayerID, locations: Set<T.CubeLocation>) {
@@ -367,7 +391,7 @@ export class Grid {
 
             let neighTrails = cube_neigh(location)
                 .filter((loc2) => {
-                    let cell = this.#queue[loc2] ?? this.#cells[loc2] as GCell;
+                    let cell = this.#queue[loc2] ?? interim[loc2] as GCell;
                     if (cell === undefined) return false;
                     if (cell.state !== T.CellState.TRAIL) return false;
                     if (cell.color !== action.color) return false;
@@ -397,8 +421,11 @@ export class Grid {
 
         // [3] trail connection
         for (let [conn, color] of potentialConnections) {
-            let trail = fill(conn, interim);
+            let trail = fill(conn, color, interim);
             if (trail !== null) {
+                // TODO[paulsn] not actually safe to use full annihilate here
+                // since it will also destroy opponents' trails that are only
+                // touching due to its flood fill nature
                 for (let pos of annihilate(conn, interim)) {
                     delete interim[pos];
                     this.#updates![pos] = { state: T.CellState.BLANK };
@@ -422,6 +449,10 @@ export class Grid {
             if (action.state !== T.CellState.BLANK) continue; // TODO[paulsn] O(4N)
 
             let location = locationKey as T.CubeLocation;
+            let current = interim[location];
+            // cell was filled before decay
+            if (current && current.state !== T.CellState.TRAIL) continue;
+
             delete interim[location];
             this.#updates![location] = { state: T.CellState.BLANK };
         }
@@ -434,6 +465,16 @@ export class Grid {
             interim[location] = action;
             this.#updates![location] = gcellToTcell(action);
             this.filled.add(location);
+        }
+
+        // [5] revive
+        for (let [locationKey, action] of Object.entries(this.#queue)) {
+            if (typeof action === 'number') continue;
+            if (action.state !== 'revive') continue; // TODO[paulsn] O(5N)
+
+            let location = locationKey as T.CubeLocation;
+            if (interim[location].state !== T.CellState.FILLED) continue;
+            interim[location].age = CELL_FILLED_MAX_AGE_TICKS;
         }
 
         this.#queue = newQueue();

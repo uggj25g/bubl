@@ -12,3 +12,15 @@ canvas {
   width: 100vw;
   height: 100vh;
 }
+
+#connectui {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 60%);
+  backdrop-filter: blur(10px);
+  padding: 4rem;
+  color: white;
+}

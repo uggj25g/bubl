@@ -32,6 +32,7 @@ export class Environment {
   camera: EnvironmentCamera;
 
   constructor() {
+    const sceneDiv = document.getElementById("scene")!;
     this.scene = new BublScene();
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -40,7 +41,7 @@ export class Environment {
     this.cellManager = new coordinates.CellManager(this.scene, this.hexMap);
     this.camera = new EnvironmentCamera();
 
-    document.body.appendChild(this.renderer.domElement);
+    sceneDiv.appendChild(this.renderer.domElement);
   }
 
   public renderScene() {

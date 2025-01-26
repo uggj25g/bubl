@@ -62,6 +62,7 @@ export class Player {
             this.id,
             this.state.energy,
         );
+        GRID.reviveAround(location, this.state.color);
         this.decayTrail.add(location);
 
         PLAYERS.broadcastPlayerUpdate();

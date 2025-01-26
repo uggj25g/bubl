@@ -4,10 +4,29 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <title>Play bübl</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="scene"></div>
     <script type="module" src="/src/main.ts"></script>
+    <div id="connectui">
+      <div id="connecting_state">
+          <h1>Connecting to bübl...</h1>
+      </div>
+      <div id="failed_state" style="display: none;">
+          <h1>Failed to connect</h1>
+          <p>Either the bübl server is down, or you need to reload the page to get the latest version of the game.</p>
+      </div>
+      <div id="lobby_state" style="display: none;">
+          <h1>Welcome to bübl</h1>
+          <ul>
+              <li><b>Use WASD</b> to move your character</li>
+              <li>Cells will inflate as you move</li>
+              <li>Complete loops to score points and increase your energy</li>
+              <li>Pop the opposing team's trails to prevent them from scoring</li>
+          </ul>
+          <button id="lobby_play_btn">Let's play</button>
+      </div>
+  </div>
   </body>
 </html>
