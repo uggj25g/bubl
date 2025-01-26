@@ -15,19 +15,19 @@ const HOVER_MATERIAL = new THREE.MeshStandardMaterial({
 
 const FILLED_MATERIALS: THREE.Material[] = [
   new THREE.MeshStandardMaterial({
-    color: 0xff8080,
+    color: 0xff0000,
   }),
   new THREE.MeshStandardMaterial({
-    color: 0x8080ff,
+    color: 0x0000ff,
   }),
 ];
 
 const TRAIL_MATERIALS: THREE.Material[] = [
   new THREE.MeshStandardMaterial({
-    color: 0xff0000,
+    color: 0xff8080,
   }),
   new THREE.MeshStandardMaterial({
-    color: 0x0000ff,
+    color: 0x8080ff,
   }),
 ];
 
