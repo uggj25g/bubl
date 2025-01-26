@@ -12,12 +12,12 @@ const GRID_DECAY_PER_N_COMMIT_TICKS = 10;
 
 /// A cell should fully decay from 1 to 0 in ... ticks (intervals of
 /// GRID_COMMIT_TICK_TIME ms * GRID_DECAY_PER_N_COMMIT_TICKS)
-const CELL_FILLED_MAX_AGE_TICKS = 10;
+const CELL_FILLED_MAX_AGE_TICKS = 25;
 
 /// Grid will perform a Vacuum Tick every ... Commit Ticks
-const GRID_VACUUM_PER_N_COMMIT_TICKS = 100;
+const GRID_VACUUM_PER_N_COMMIT_TICKS = 30;
 
-const PLAYER_REVIVE_RADIUS = 2;
+const PLAYER_REVIVE_RADIUS = 3;
 
 export type CubeLocation = { q: T.Integer, r: T.Integer, s: T.Integer };
 export const cube = (q: T.Integer, r: T.Integer, s: T.Integer) => ({ q, r, s });
@@ -168,7 +168,7 @@ export class Grid {
         }
         let leftover = boundary.q + boundary.r + boundary.s;
         for (let axis of ['q', 'r', 's'] as Array<keyof CubeLocation>) {
-            if (boundary[axis] === 0) {
+            if (direction[axis] === 0) {
                 boundary[axis] = -leftover;
             }
         }
@@ -463,6 +463,7 @@ export class Grid {
                     type: T.GridEventType.FILL,
                     location: conn,
                     affectedLocations: trail,
+                    team: color,
                     teamScore,
                 });
 
