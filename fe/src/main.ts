@@ -48,11 +48,12 @@ SOCKET.init.then(
     console.log("socket init!");
     const p = x[0];
     rpm.spawn_client_player(p);
+    environment.cellManager.setCenter(p.location);
     connectUiManager.updatePlayerName(p.name);
     connectUiManager.updatePlayerColor(p.color);
     SOCKET.callbacks.onSelfUpdate = (player) => {
       // TODO(dankons): this should be a player move callback instead
-      environment.cellManager.offsetActiveCells(player.location);
+      environment.cellManager.setCenter(player.location);
       connectUiManager.updatePlayerName(player.name);
       connectUiManager.updatePlayerColor(player.color);
       hudManager.setEnergy(player.energy);

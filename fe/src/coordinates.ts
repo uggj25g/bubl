@@ -94,20 +94,29 @@ export class CellManager {
 
   public cubeDistance(a: CubeCoordinates, b: CubeCoordinates) {
     const sub = this.subtractCube(a, b);
-    return (Math.abs(sub.q) + Math.abs(sub.r) + Math.abs(sub.s));
+    return Math.abs(sub.q) + Math.abs(sub.r) + Math.abs(sub.s);
   }
 
-  public offsetActiveCells(location: T.CubeLocation) {
+  public setCenter(location: T.CubeLocation) {
+    if (this.currentCenter === location) return;
     this.currentCenter = location;
 
-    this.activeCells.forEach((cell, cellLocation) => {
-      this.scene.remove(cell);
-      this.activeCells.delete(cellLocation);
+    for_radius(this.currentCenter, PLAYING_RADIUS, (coord) => {
+      const cell = this.get_cell(coord.to_string());
+      cell.despawn = 3;
     });
 
-    for_radius(this.currentCenter, PLAYING_RADIUS, (coord) => {
-      this.get_cell(coord.to_string())
-    })
+    const markedForRemoval: T.CubeLocation[] = [];
+    for (const [cellLocation, cell] of this.activeCells) {
+      cell.despawn -= 1;
+      if (cell.despawn <= 0) {
+        markedForRemoval.push(cellLocation);
+      }
+    }
+    for (const l of markedForRemoval) {
+      this.scene.remove(this.activeCells.get(l)!);
+      this.activeCells.delete(l);
+    }
   }
 }
 
@@ -117,6 +126,10 @@ export class VisualCell extends THREE.Group {
   cell: Cell;
   hover: boolean;
 
+  // Each center change event will decay this for all tiles, unless those
+  // found in the desired radius. If a tile reaches 0, it will be despawned.
+  despawn: T.Integer;
+
   constructor(location: T.CubeLocation, cell: Cell) {
     super();
     this.location = location;
@@ -124,6 +137,7 @@ export class VisualCell extends THREE.Group {
     this.mesh.rotateX(Math.PI / 2);
     this.cell = cell;
     this.hover = false;
+    this.despawn = 2;
     this.add(this.mesh);
     this.updateObject();
   }
