@@ -53,6 +53,7 @@ export class ConnectUiManager {
       },
     );
     SOCKET.callbacks.onConnectionLost = () => {
+      connectUi.style.display = 'block';
       lobbyStateUi.style.display = 'none';
       failedStateUi.style.display = 'block';
     }
