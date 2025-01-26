@@ -130,3 +130,13 @@ body {
   color: #ff8000;
   text-shadow: 0px -1px 10px #ff0000, 0px 2px 5px #000000;
 }
+
+.bubl {
+  display: inline-block;
+  height: 1.2em;
+  vertical-align: top;
+  color: rgba(255, 255, 255, 0);
+  background-image: url(../bubl.webp);
+  background-size: cover;
+  aspect-ratio: 1047 / 512;
+}
