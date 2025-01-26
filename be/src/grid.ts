@@ -1,7 +1,7 @@
 import * as T from '../../types';
 import { annihilate, fill, cube_neigh, cube_radius } from './grid_algo';
 import { assert } from './util';
-import { TEAMS } from './player';
+import { TEAMS, PLAYERS } from './player';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
 /// ... milliseconds
@@ -441,7 +441,13 @@ export class Grid {
             // them because this will distort the score
             let location = locationKey as T.CubeLocation;
             let annihilated = annihilate(location, interim);
-            console.log('[grid] annihilated!', annihilated.size);
+            if (annihilated.size === 0) continue;
+            // TODO align to tick
+            PLAYERS.broadcastGridEvent({
+                type: T.GridEventType.ANNIHILATE,
+                location,
+                affectedLocations: Array.from(annihilated),
+            });
             for (let pos of annihilated) {
                 delete interim[pos];
                 this.#updates![pos] = { state: T.CellState.BLANK };
@@ -465,7 +471,14 @@ export class Grid {
                     scorePerPlayer[owner] = (scorePerPlayer[owner] ?? 0) + 1;
                 }
 
-                TEAMS.applyFillScore(color, scorePerPlayer);
+                let teamScore = TEAMS.applyFillScore(color, scorePerPlayer);
+                // TODO align to tick
+                PLAYERS.broadcastGridEvent({
+                    type: T.GridEventType.FILL,
+                    location: conn,
+                    affectedLocations: trail,
+                    teamScore,
+                });
 
                 // TODO[paulsn] not actually safe to use full annihilate here
                 // since it will also destroy opponents' trails that are only

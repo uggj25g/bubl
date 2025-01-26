@@ -56,6 +56,7 @@ export interface Callbacks {
     onPlayerUpdate?(state: T.RemotePlayerState): void;
     onCellUpdate?(location: CubeCoordinates, data: T.Cell): void;
     onTeamsUpdate?(teams: T.TeamState[]): void;
+    onGridEvent?(event: T.GridEventMessage): void;
     onConnectionLost?(): void;
 }
 
@@ -179,6 +180,12 @@ window.SOCKET = SOCKET;
         }
 
         SOCKET.callbacks.onTeamsUpdate?.(msg.teams);
+    };
+
+    SOCKET.handlers[T.MessageType.GRID_EVENT] = (msg_) => {
+        let msg = msg_[1] as T.GridEventMessage;
+        console.log('[ws] grid event', msg);
+        SOCKET.callbacks.onGridEvent?.(msg);
     }
 }
 

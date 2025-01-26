@@ -1,7 +1,7 @@
 //#region Scaffolding
 
-export type ProtocolVersion = 8;
-export const PROTOCOL_VERSION = 8 as ProtocolVersion;
+export type ProtocolVersion = 9;
+export const PROTOCOL_VERSION = 9 as ProtocolVersion;
 
 export enum MessageType {
     INIT = "INIT",
@@ -29,6 +29,7 @@ export function isValidClientMessageType(val: any): val is ClientMessageType {
     return (typeof val === "string") && (
         val === MessageType.MOVE
         || val === MessageType.RENAME
+        || val === MessageType.CHANGE_COLOR
     );
 }
 
@@ -66,8 +67,10 @@ export type UpdateGridMessage = {
 export type GridEventMessage = {
     type: GridEventType,
     location: CubeLocation,
-    player: PlayerID,
-    score: Integer,
+    affectedLocations: CubeLocation[],
+
+    /// present only for FILL events
+    teamScore?: Integer,
 }
 export type UpdateTeamsMessage = {
     teams: TeamState[],

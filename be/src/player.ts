@@ -231,6 +231,12 @@ class Players {
         }
     }
 
+    broadcastGridEvent(ev: T.GridEventMessage) {
+        for (let ws of this.#byWs.keys()) {
+            send(ws, [T.MessageType.GRID_EVENT, ev]);
+        }
+    }
+
     broadcastTeamUpdate(teams: T.TeamState[]) {
         const msg: T.UpdateTeamsMessage = { teams };
         for (let ws of this.#byWs.keys()) {
@@ -289,7 +295,9 @@ class Teams {
             }
         }
 
-        this.addScore(team, CELLS_TO_SCORE(totalCells));
+        let score = CELLS_TO_SCORE(totalCells);
+        this.addScore(team, score);
+        return score;
     }
 }
 
