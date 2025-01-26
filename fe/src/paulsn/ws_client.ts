@@ -1,6 +1,6 @@
 import * as T from '../../../types';
 import { CubeCoordinates } from '../coordinates';
-import { deferred } from './util';
+import { deferred, debug_log } from './util';
 
 type Handlers = { [type in T.ServerMessageType]: (msg: T.ServerMessage) => void };
 export const SOCKET = {
@@ -67,14 +67,14 @@ window.SOCKET = SOCKET;
     let def = deferred<[T.SelfPlayerState, T.CellGrid]>();
     SOCKET.init = def.promise;
     SOCKET.conn.onerror = (ev: Event) => {
-        console.log('[ws] error:', ev);
+        debug_log('[ws] error:', ev);
         def.reject(ev);
     };
     SOCKET.conn.onmessage = (ev: MessageEvent) => {
         let data = ev.data;
         if (typeof data !== 'string') return;
         let msg = JSON.parse(data);
-        console.log('[ws] received:', data);
+        debug_log('[ws] received:', data);
         if ( ! Array.isArray(msg)) return;
         if (msg.length !== 2) return;
         let type = msg[0] as T.ServerMessageType;
@@ -196,7 +196,7 @@ window.SOCKET = SOCKET;
 
     SOCKET.handlers[T.MessageType.GRID_EVENT] = (msg_) => {
         let msg = msg_[1] as T.GridEventMessage;
-        console.log('[ws] grid event', msg);
+        debug_log('[ws] grid event', msg);
         SOCKET.callbacks.onGridEvent?.(msg);
     }
 }

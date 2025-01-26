@@ -17,3 +17,9 @@ export function deferred<T>(): Deferred<T> {
         reject: reject!,
     };
 }
+
+export function debug_log(format: string, ...args: any) {
+    if (import.meta.env.DEV) {
+        console.log(format, ...args);
+    }
+}
