@@ -49,11 +49,13 @@ SOCKET.init.then(
     const p = x[0];
     rpm.spawn_client_player(p);
     environment.cellManager.setCenter(p.location);
+    hudManager.setLocation(p.location);
     connectUiManager.updatePlayerName(p.name);
     connectUiManager.updatePlayerColor(p.color);
     SOCKET.callbacks.onSelfUpdate = (player) => {
       // TODO(dankons): this should be a player move callback instead
       environment.cellManager.setCenter(player.location);
+      hudManager.setLocation(player.location);
       connectUiManager.updatePlayerName(player.name);
       connectUiManager.updatePlayerColor(player.color);
       hudManager.setEnergy(player.energy);
@@ -139,6 +141,7 @@ animate();
 
 window.addEventListener("resize", () => {
   environment.renderer.setSize(window.innerWidth, window.innerHeight);
+  environment.nametags.setSize(window.innerWidth, window.innerHeight);
   environment.camera.aspect = window.innerWidth / window.innerHeight;
   environment.camera.updateProjectionMatrix();
 });

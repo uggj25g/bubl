@@ -57,6 +57,7 @@ export class PlayerManager {
     if (!player) {
       return;
     }
+    player.beforeDespawn();
     this.scene.remove(player);
     this.remote_players = this.remote_players.filter(
       (p) => p.remote_id === state.id,
@@ -85,7 +86,7 @@ export class Player extends THREE.Group {
   nextMoveTime: number;
   currentMoveDelta: coordinates.CubeCoordinates;
 
-  nametag: CSS2DObject;
+  nametag: CSS2DObject | undefined;
 
   _transition: TransitionData | undefined;
 
@@ -117,6 +118,13 @@ export class Player extends THREE.Group {
     this.setColor(state.color);
 
     requestAnimationFrame((e) => this.animate(e));
+  }
+
+  public beforeDespawn() {
+    if (this.nametag) {
+      this.nametag.element.remove();
+      this.nametag = undefined;
+    }
   }
 
   public animate(timestamp: number) {
@@ -262,22 +270,26 @@ export class Player extends THREE.Group {
   private setColor(color: T.Integer) {
     console.log(`set player color: ${color}`);
     this.color = color;
-    if (color == 0) {
-      this.nametag.element.classList.remove("hud-nametag-blue");
-      this.nametag.element.classList.add("hud-nametag-red");
-    } else if (color == 1) {
-      this.nametag.element.classList.remove("hud-nametag-red");
-      this.nametag.element.classList.add("hud-nametag-blue");
-    } else {
-      this.nametag.element.classList.remove("hud-nametag-red");
-      this.nametag.element.classList.remove("hud-nametag-blue");
+    if (this.nametag) {
+      if (color == 0) {
+        this.nametag.element.classList.remove("hud-nametag-blue");
+        this.nametag.element.classList.add("hud-nametag-red");
+      } else if (color == 1) {
+        this.nametag.element.classList.remove("hud-nametag-red");
+        this.nametag.element.classList.add("hud-nametag-blue");
+      } else {
+        this.nametag.element.classList.remove("hud-nametag-red");
+        this.nametag.element.classList.remove("hud-nametag-blue");
+      }
     }
   }
 
   private setName(name: string) {
     this.remote_name = name;
     console.log(`set player name: ${name}`);
-    this.nametag.element.innerText = name;
+    if (this.nametag) {
+      this.nametag.element.innerText = name;
+    }
   }
 
   public move(translation: coordinates.CubeCoordinates) {
