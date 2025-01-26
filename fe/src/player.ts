@@ -89,6 +89,7 @@ export class Player extends THREE.Group {
   nametag: CSS2DObject | undefined;
 
   _transition: TransitionData | undefined;
+  despawned: boolean = false;
 
   // TODO[paulsn] type discards energy information for client player
   constructor(state: T.RemotePlayerState) {
@@ -121,6 +122,8 @@ export class Player extends THREE.Group {
   }
 
   public beforeDespawn() {
+    this.despawned = true;
+    this.timer.dispose();
     if (this.nametag) {
       this.nametag.element.remove();
       this.nametag = undefined;
@@ -128,6 +131,8 @@ export class Player extends THREE.Group {
   }
 
   public animate(timestamp: number) {
+    if (this.despawned) return;
+
     // Handle current input direction if this is a player character
     this.timer.update(timestamp);
     const time = this.timer.getElapsed();
