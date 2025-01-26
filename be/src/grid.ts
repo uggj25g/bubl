@@ -12,10 +12,10 @@ const GRID_DECAY_PER_N_COMMIT_TICKS = 10;
 
 /// A cell should fully decay from 1 to 0 in ... ticks (intervals of
 /// GRID_COMMIT_TICK_TIME ms * GRID_DECAY_PER_N_COMMIT_TICKS)
-const CELL_FILLED_MAX_AGE_TICKS = 10;
+const CELL_FILLED_MAX_AGE_TICKS = 25;
 
 /// Grid will perform a Vacuum Tick every ... Commit Ticks
-const GRID_VACUUM_PER_N_COMMIT_TICKS = 100;
+const GRID_VACUUM_PER_N_COMMIT_TICKS = 30;
 
 const PLAYER_REVIVE_RADIUS = 2;
 
