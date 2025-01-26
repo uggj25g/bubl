@@ -56,6 +56,48 @@ body {
   color: white;
 }
 
+#scorebar {
+  display: flex;
+  align-items: center;
+  height: 3rem;
+  top: 7%;
+  width: 20rem;
+  margin: 3rem;
+  padding: 0.1rem 1.5rem;
+  border-radius: 1.5rem;
+  -webkit-box-shadow: 0px 10px 20px -5px rgba(0,0,0,0.4);
+  -moz-box-shadow: 0px 10px 20px -5px rgba(0,0,0,0.4);
+  box-shadow: 0px 10px 20px -5px rgba(0,0,0,0.4);
+  background-color: rgba(0, 0, 0, 60%);
+  backdrop-filter: blur(8px);
+  color: white;
+}
+
+.score-part {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+#scorebar-red {
+  background-color: #FF0000;
+  height: 1rem;
+  width: 50%;
+  border-top-left-radius: 1rem;
+  border-bottom-left-radius: 1rem;
+}
+
+#scorebar-blue {
+  background-color: #0080ff;
+  height: 1rem;
+  width: 50%;
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
 .hud-item {
   margin: 0;
   padding: 0;

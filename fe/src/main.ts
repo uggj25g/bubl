@@ -39,9 +39,11 @@ function _onTeamState(teamState: T.TeamState[]) {
   const blueState = teamState.find((e) => e.color === 1);
   if (redState) {
     hudManager.setRedScore(redState.score);
+    hudManager.setScorebarValues();
   }
   if (blueState) {
     hudManager.setBlueScore(blueState.score);
+    hudManager.setScorebarValues();
   }
 }
 
