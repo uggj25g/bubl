@@ -24,7 +24,7 @@ export class EventFxManager {
         new Popup(
           message.location,
           message.teamScore?.toString() ?? "-",
-          GridEventColor.Red,
+          message.team != 0 ? GridEventColor.Blue : GridEventColor.Red,
         ),
       );
     } else if (message.type == T.GridEventType.ANNIHILATE) {
