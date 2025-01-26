@@ -1,6 +1,6 @@
 import * as T from '../../types';
-import { annihilate, fill, cube_neigh, cube_radius } from './grid_algo';
-import { assert } from './util';
+import { annihilate, fill, cube_neigh, cube_add, cube_mul, cube_radius, GExtent, newExtent } from './grid_algo';
+import { assert, choose } from './util';
 import { TEAMS, PLAYERS } from './player';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
@@ -120,51 +120,6 @@ export type GCellRevive = {
     state: 'revive',
 };
 
-export type GExtent = {
-    q: [min: T.Integer, max: T.Integer],
-    r: [min: T.Integer, max: T.Integer],
-    s: [min: T.Integer, max: T.Integer],
-    toString(): string;
-};
-interface GExtentCalc {
-    extend(pos: CubeLocation): void;
-    finalize(): GExtent;
-}
-const newExtent = (): GExtentCalc => {
-    let any = false;
-    let ext: GExtent = {
-        q: [0, 0],
-        r: [0, 0],
-        s: [0, 0],
-        toString() {
-            return `q:${this.q[0]}..${this.q[1]}`
-                + ` r:${this.r[0]}..${this.r[1]}`
-                + ` s:${this.s[0]}..${this.s[1]}`;
-        },
-    };
-
-    const extend = (pos: CubeLocation) => {
-        if ( ! any) {
-            ext.q = [pos.q, pos.q];
-            ext.r = [pos.r, pos.r];
-            ext.s = [pos.s, pos.s];
-            any = true;
-            return;
-        }
-
-        ext.q[0] = Math.min(ext.q[0], pos.q);
-        ext.q[1] = Math.max(ext.q[1], pos.q);
-        ext.r[0] = Math.min(ext.r[0], pos.r);
-        ext.r[1] = Math.max(ext.r[1], pos.r);
-        ext.s[0] = Math.min(ext.s[0], pos.s);
-        ext.s[1] = Math.max(ext.s[1], pos.s);
-    };
-
-    const finalize = () => ext;
-
-    return { extend, finalize };
-}
-
 export class Grid {
     #cells: GCellGrid;
     #queue: GQueue;
@@ -190,6 +145,37 @@ export class Grid {
         }
 
         return grid;
+    }
+
+    outsideLocation(): T.CubeLocation {
+        let extent = this.#extent;
+        let direction = choose([
+            cube(0, 1, -1),
+            cube(0, -1, 1),
+            cube(1, 0, -1),
+            cube(-1, 0, 1),
+            cube(1, -1, 0),
+            cube(-1, 1, 0),
+        ]);
+        // let distance = 10 + (Math.random() * 10 | 0);
+
+        let boundary = cube(0, 0, 0);
+        for (let axis of ['q', 'r', 's'] as Array<keyof CubeLocation>) {
+            boundary[axis] =
+                direction[axis] === -1 ? extent[axis][0] :
+                direction[axis] === 1 ? extent[axis][1] :
+                0;
+        }
+        let leftover = boundary.q + boundary.r + boundary.s;
+        for (let axis of ['q', 'r', 's'] as Array<keyof CubeLocation>) {
+            if (boundary[axis] === 0) {
+                boundary[axis] = -leftover;
+            }
+        }
+
+        // let vector = cube_mul(direction, distance);
+        let vector = cube_mul(direction, 1);
+        return cube_str(cube_add(boundary, vector));
     }
 
     setTrail(location: T.CubeLocation, color: T.Integer, ownerPlayerId: T.PlayerID, age: T.Integer) {
