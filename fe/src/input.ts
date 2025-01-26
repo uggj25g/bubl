@@ -9,10 +9,12 @@ export interface DirectionCallback {
 }
 
 export class InputManager {
+  activated: boolean;
   direction: DirectionInputs;
   directionCallbacks: DirectionCallback[] = [];
 
-  constructor() {
+  constructor(activated: boolean = false) {
+    this.activated = activated;
     this.direction = {
       up: false,
       down: false,
@@ -24,7 +26,21 @@ export class InputManager {
     document.addEventListener("keyup", (e) => this.onKeyUp(e), false);
   }
 
+  public setActivated(activated: boolean) {
+    this.activated = activated;
+    if (!activated) {
+      this.direction = {
+        up: false,
+        down: false,
+        left: false,
+        right: false,
+      };
+      this.directionCallbacks.forEach((e) => e(this.direction));
+    }
+  }
+
   private onKeyDown(event: KeyboardEvent) {
+    if (!this.activated) return;
     switch (event.code) {
       case "KeyW":
         this.direction.up = true;
@@ -48,6 +64,7 @@ export class InputManager {
   }
 
   private onKeyUp(event: KeyboardEvent) {
+    if (!this.activated) return;
     switch (event.code) {
       case "KeyW":
         this.direction.up = false;
