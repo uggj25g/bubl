@@ -1,7 +1,7 @@
 //#region Scaffolding
 
-export type ProtocolVersion = 9;
-export const PROTOCOL_VERSION = 9 as ProtocolVersion;
+export type ProtocolVersion = 10;
+export const PROTOCOL_VERSION = 10 as ProtocolVersion;
 
 export enum MessageType {
     INIT = "INIT",
@@ -70,6 +70,7 @@ export type GridEventMessage = {
     affectedLocations: CubeLocation[],
 
     /// present only for FILL events
+    team?: Color,
     teamScore?: Integer,
 }
 export type UpdateTeamsMessage = {

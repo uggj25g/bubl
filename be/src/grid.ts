@@ -463,6 +463,7 @@ export class Grid {
                     type: T.GridEventType.FILL,
                     location: conn,
                     affectedLocations: trail,
+                    team: color,
                     teamScore,
                 });
 
