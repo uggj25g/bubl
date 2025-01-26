@@ -3,6 +3,8 @@ import * as G from './grid';
 
 export const cube_add = (a: G.CubeLocation, b: G.CubeLocation) =>
     G.cube(a.q + b.q, a.r + b.r, a.s + b.s);
+export const cube_mul = (a: G.CubeLocation, scalar: number) =>
+    G.cube(a.q * scalar, a.r * scalar, a.s * scalar);
 
 export function cube_neigh(rootPos: T.CubeLocation): T.CubeLocation[] {
     let pos = G.str_cube(rootPos);
@@ -117,3 +119,53 @@ export function fill(root: T.CubeLocation, color: T.Integer, grid: G.GCellInteri
 
     return null;
 }
+
+//#region Extent calculation
+
+
+export type GExtent = {
+    q: [min: T.Integer, max: T.Integer],
+    r: [min: T.Integer, max: T.Integer],
+    s: [min: T.Integer, max: T.Integer],
+    toString(): string;
+};
+interface GExtentCalc {
+    extend(pos: G.CubeLocation): void;
+    finalize(): GExtent;
+}
+export const newExtent = (): GExtentCalc => {
+    let any = false;
+    let ext: GExtent = {
+        q: [0, 0],
+        r: [0, 0],
+        s: [0, 0],
+        toString() {
+            return `q:${this.q[0]}..${this.q[1]}`
+                + ` r:${this.r[0]}..${this.r[1]}`
+                + ` s:${this.s[0]}..${this.s[1]}`;
+        },
+    };
+
+    const extend = (pos: G.CubeLocation) => {
+        if ( ! any) {
+            ext.q = [pos.q, pos.q];
+            ext.r = [pos.r, pos.r];
+            ext.s = [pos.s, pos.s];
+            any = true;
+            return;
+        }
+
+        ext.q[0] = Math.min(ext.q[0], pos.q);
+        ext.q[1] = Math.max(ext.q[1], pos.q);
+        ext.r[0] = Math.min(ext.r[0], pos.r);
+        ext.r[1] = Math.max(ext.r[1], pos.r);
+        ext.s[0] = Math.min(ext.s[0], pos.s);
+        ext.s[1] = Math.max(ext.s[1], pos.s);
+    };
+
+    const finalize = () => ext;
+
+    return { extend, finalize };
+}
+
+//#endextent

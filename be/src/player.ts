@@ -5,7 +5,7 @@ import GRID from './grid';
 import { send } from './index';
 import { choose, ANIMALS, assert } from './util';
 
-const PLAYER_TRAIL_LENGTH = 8;
+const INITIAL_PLAYER_TRAIL_LENGTH = 6;
 const MAX_COLORS = 2;
 
 const CELLS_TO_SCORE = (cells: number): number => 4 + (cells - 4) ** 2;
@@ -157,8 +157,8 @@ class Players {
             id: id,
             name: choose(ANIMALS),
             color: this.#nextColor, // TODO[paulsn] assign random
-            location: '0,0,0', // TODO[paulsn] assign random
-            energy: PLAYER_TRAIL_LENGTH, // TODO[paulsn] do not hardcode
+            location: GRID.outsideLocation(),
+            energy: INITIAL_PLAYER_TRAIL_LENGTH,
         };
         this.#nextColor = (this.#nextColor + 1) % MAX_COLORS;
 
