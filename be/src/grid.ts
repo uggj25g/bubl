@@ -17,7 +17,7 @@ const CELL_FILLED_MAX_AGE_TICKS = 25;
 /// Grid will perform a Vacuum Tick every ... Commit Ticks
 const GRID_VACUUM_PER_N_COMMIT_TICKS = 30;
 
-const PLAYER_REVIVE_RADIUS = 2;
+const PLAYER_REVIVE_RADIUS = 3;
 
 export type CubeLocation = { q: T.Integer, r: T.Integer, s: T.Integer };
 export const cube = (q: T.Integer, r: T.Integer, s: T.Integer) => ({ q, r, s });
