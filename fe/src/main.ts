@@ -45,6 +45,7 @@ SOCKET.init.then(
       connectUiManager.updatePlayerName(player.name);
       connectUiManager.updatePlayerColor(player.color);
       hudManager.setEnergy(player.energy);
+      rpm.client_player?.setRemoteState(player);
     };
 
     // Spawn in existing remote players

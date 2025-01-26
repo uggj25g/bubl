@@ -6,7 +6,8 @@ import * as input from "./input";
 
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { Timer } from "three/addons/misc/Timer.js";
-import JEASINGS, { JEasing } from "jeasings";
+import JEASINGS from "jeasings";
+import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/Addons.js";
 export class PlayerManager {
   scene: THREE.Scene;
   inputManager: input.InputManager;
@@ -83,6 +84,8 @@ export class Player extends THREE.Group {
   nextMoveTime: number;
   currentMoveDelta: coordinates.CubeCoordinates;
 
+  nametag: CSS2DObject;
+
   _transition: TransitionData | undefined;
 
   // TODO[paulsn] type discards energy information for client player
@@ -94,6 +97,13 @@ export class Player extends THREE.Group {
     this.mesh.position.y = 1;
     this.add(this.mesh);
     this.updateObject();
+
+    const nameElement = document.createElement("p");
+    nameElement.innerText = state.name;
+    nameElement.classList.add("hud-nametag");
+    this.nametag = new CSS2DObject(nameElement);
+    this.nametag.position.y = 3;
+    this.add(this.nametag);
 
     this.timer = new Timer();
     this.nextMoveTime = 0;
@@ -248,10 +258,21 @@ export class Player extends THREE.Group {
 
   private setColor(color: T.Integer) {
     console.log(`set player color: ${color}`);
+    if (color == 0) {
+      this.nametag.element.classList.remove("hud-nametag-blue");
+      this.nametag.element.classList.add("hud-nametag-red");
+    } else if (color == 1) {
+      this.nametag.element.classList.remove("hud-nametag-red");
+      this.nametag.element.classList.add("hud-nametag-blue");
+    } else {
+      this.nametag.element.classList.remove("hud-nametag-red");
+      this.nametag.element.classList.remove("hud-nametag-blue");
+    }
   }
 
   private setName(name: string) {
     console.log(`set player name: ${name}`);
+    this.nametag.element.innerText = name;
   }
 
   public move(translation: coordinates.CubeCoordinates) {
@@ -266,6 +287,7 @@ export class Player extends THREE.Group {
       this.setLocation(new_location);
     }
     // If color is different, change color
+    console.log(`aaaa: ${state.color} ${this.remote_state.color}`);
     if (state.color != this.remote_state.color) {
       this.setColor(state.color);
     }

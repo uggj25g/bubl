@@ -56,7 +56,7 @@ export class ConnectUiManager {
 
   private getCleanName(new_name: string): string | undefined {
     const value = new_name.trim();
-    if (value.length >= 4 && value.length <= 30) {
+    if (value.length >= 3 && value.length <= 30) {
       return value;
     }
     return undefined;

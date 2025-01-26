@@ -13,6 +13,12 @@ body {
   height: 100%;
 }
 
+#nametags {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
 #game {
   position: absolute;
   top: 0;
@@ -22,6 +28,7 @@ body {
 }
 
 #connectui {
+  z-index: 10;
   position: absolute;
   top: 0;
   left: 0;
@@ -76,4 +83,20 @@ body {
   width: 2rem;
   display: inline;
   flex: none;
+}
+
+.hud-nametag {
+  font-size: 1rem;
+  font-weight: 600; 
+  text-align: center;
+}
+
+.hud-nametag-red {
+  color: #FF0000;
+  text-shadow: 0px -1px 10px #FF0000, 0px 2px 5px #FFFFFF;
+}
+
+.hud-nametag-blue {
+  color: #0090FF;
+  text-shadow: 0px -1px 10px #0090FF, 0px 2px 5px #000000;
 }
