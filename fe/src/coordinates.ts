@@ -31,10 +31,6 @@ const TRAIL_MATERIALS: THREE.Material[] = [
   }),
 ];
 
-const FLAT_GEOMETRY = new HexagonFlatGeometry();
-
-const RAISED_GEOMETRY = new HexagonFlatGeometry(0.5);
-
 export const PLAYING_RADIUS = 30;
 
 export type CubeCoordStr = T.CubeLocation;
@@ -135,6 +131,7 @@ export class VisualCell extends THREE.Group {
     this.location = location;
     this.mesh = new HexagonMesh();
     this.mesh.rotateX(Math.PI / 2);
+    this.mesh.geometry = new HexagonFlatGeometry();
     this.cell = cell;
     this.hover = false;
     this.despawn = 2;
@@ -158,17 +155,22 @@ export class VisualCell extends THREE.Group {
 
     if (this.hover) {
       this.mesh.material = HOVER_MATERIAL;
-      this.mesh.geometry = RAISED_GEOMETRY;
     } else {
       if (this.cell.state == T.CellState.TRAIL) {
         this.mesh.material = TRAIL_MATERIALS[this.cell.color ?? 0];
-        this.mesh.geometry = RAISED_GEOMETRY;
+        this.mesh.geometry = new HexagonFlatGeometry(0.5);
       } else if (this.cell.state == T.CellState.FILLED) {
         this.mesh.material = FILLED_MATERIALS[this.cell.color ?? 0];
-        this.mesh.geometry = RAISED_GEOMETRY;
+        const defaultScale = 0.1;
+        const filled = this.cell as T.CellFilled;
+        const age = filled.age;
+        const scale = defaultScale + (age / 2 ) * (1 - defaultScale);
+        this.mesh.geometry = new HexagonFlatGeometry(
+          scale
+        )
       } else {
         this.mesh.material = BASE_MATERIAL;
-        this.mesh.geometry = FLAT_GEOMETRY;
+        this.mesh.geometry = new HexagonFlatGeometry()
       }
     }
   }
@@ -301,4 +303,3 @@ export class CubeCoordinates {
     return new THREE.Vector3(-x, 0, -y);
   }
 }
-
