@@ -8,6 +8,11 @@ import { choose, ANIMALS, assert } from './util';
 const PLAYER_TRAIL_LENGTH = 8;
 const MAX_COLORS = 2;
 
+const CELLS_TO_SCORE = (cells: number): number => 4 + (cells - 4) ** 2;
+
+// TODO: logarithmic?
+const CELLS_TO_ENERGY = (cells: number): number => cells;
+
 export class Player {
     id: T.PlayerID;
     conn: WebSocket;
@@ -35,6 +40,20 @@ export class Player {
         let state: T.RemotePlayerState & { energy?: T.SelfPlayerState["energy"] } = { ...this.state };
         delete state.energy;
         return state;
+    }
+
+    increaseEnergy(amount: number) {
+        assert(this.state !== null);
+        this.state!.energy += amount;
+        this.sendState();
+    }
+
+    sendState() {
+        const ownMsg: T.UpdatePlayerMessage = {
+            id: this.id,
+            state: this.state,
+        };
+        send(this.conn, [T.MessageType.UPDATE_PLAYER, ownMsg]);
     }
 
     handleMessageBase(rawMsg: any, isBinary: boolean) {
@@ -128,6 +147,10 @@ class Players {
         return Array.from(this.#byId.values());
     }
 
+    getById(id: T.PlayerID): Player | undefined {
+        return this.#byId.get(id);
+    }
+
     spawn(conn: WebSocket): Player {
         let id = this.#id();
         let state: T.SelfPlayerState = {
@@ -146,12 +169,7 @@ class Players {
         console.log('[%d connect]', id);
 
         conn.once('close', () => {
-            this.#byWs.delete(conn);
-            this.#byId.delete(id);
-            player.state = null;
-            this.broadcastPlayerUpdate(player);
-            console.log('[%d disconnected]', id);
-            player.dispose();
+            this.disconnect(player, true);
         });
 
         let otherPlayers = Array.from(this.#byId.values())
@@ -165,6 +183,7 @@ class Players {
                 self: player.state!,
                 others: otherPlayers,
                 grid: T.compressGrid(GRID.cellGrid),
+                teams: TEAMS.state,
             },
         ]);
 
@@ -173,13 +192,16 @@ class Players {
         return player;
     }
 
-    disconnect(player: Player) {
+    disconnect(player: Player, graceful: boolean = false) {
         this.#byId.delete(player.id);
         this.#byWs.delete(player.conn);
-        player.conn.close();
+        if ( ! graceful) {
+            player.conn.close();
+        }
         player.state = null;
+        GRID.clearOwnedTrail(player.id, player.decayTrail);
         this.broadcastPlayerUpdate(player, true);
-        console.log('[%d force disconnect]', player.id);
+        console.log('[%d %sdisconnect]', player.id, graceful ? '' : 'force ');
         player.dispose();
     }
 
@@ -193,12 +215,7 @@ class Players {
         for (let [ws, player] of this.#byWs.entries()) {
             if (player === subject) {
                 if (excludeSelf) continue;
-                assert(player.state !== null);
-                const ownMsg: T.UpdatePlayerMessage = {
-                    id: player.id,
-                    state: player.state,
-                };
-                send(ws, [T.MessageType.UPDATE_PLAYER, ownMsg]);
+                player.sendState();
             } else {
                 send(ws, [T.MessageType.UPDATE_PLAYER, msg]);
             }
@@ -206,13 +223,82 @@ class Players {
     }
 
     broadcastGridUpdate(diff: T.CellGrid) {
+        const msg: T.UpdateGridMessage = {
+            gridDiff: T.compressGrid(diff),
+        };
         for (let ws of this.#byWs.keys()) {
-            const msg: T.UpdateGridMessage = {
-                gridDiff: T.compressGrid(diff),
-            };
             send(ws, [T.MessageType.UPDATE_GRID, msg]);
+        }
+    }
+
+    broadcastGridEvent(ev: T.GridEventMessage) {
+        for (let ws of this.#byWs.keys()) {
+            send(ws, [T.MessageType.GRID_EVENT, ev]);
+        }
+    }
+
+    broadcastTeamUpdate(teams: T.TeamState[]) {
+        const msg: T.UpdateTeamsMessage = { teams };
+        for (let ws of this.#byWs.keys()) {
+            send(ws, [T.MessageType.UPDATE_TEAMS, msg]);
         }
     }
 }
 
 export const PLAYERS = new Players();
+
+class Teams {
+    scores: Map<T.Color, T.Integer>;
+    dirty: Set<T.Color>;
+
+    constructor() {
+        this.scores = new Map();
+        this.dirty = new Set();
+    }
+
+    get state(): T.TeamState[] {
+        return Array.from(this.scores).map(([color, score]) => ({ color, score }));
+    }
+
+    getScore(team: T.Color) {
+        return this.scores.get(team) ?? 0;
+    }
+    addScore(team: T.Color, amount: T.Integer) {
+        this.scores.set(team, this.getScore(team) + amount);
+        this.dirty.add(team);
+    }
+
+    startTick(_tick: number) {
+        //
+    }
+    endTick(_tick: number) {
+        if (this.dirty.size) {
+            let teams = [] as T.TeamState[];
+            for (let color of this.dirty.values()) {
+                teams.push({ color, score: this.getScore(color) });
+            }
+            PLAYERS.broadcastTeamUpdate(teams);
+            this.dirty.clear();
+        }
+    }
+
+    applyFillScore(team: T.Color, playerContributions: Record<T.PlayerID, T.Integer>) {
+        let totalCells = 0;
+        for (let [idKey, cells] of Object.entries(playerContributions)) {
+            let id = Number(idKey) as T.Integer;
+            if (id === 0) continue;
+            totalCells += cells;
+
+            let player = PLAYERS.getById(id);
+            if (player) {
+                player.increaseEnergy(CELLS_TO_ENERGY(cells));
+            }
+        }
+
+        let score = CELLS_TO_SCORE(totalCells);
+        this.addScore(team, score);
+        return score;
+    }
+}
+
+export const TEAMS = new Teams();

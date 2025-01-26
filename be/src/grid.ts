@@ -1,6 +1,7 @@
 import * as T from '../../types';
 import { annihilate, fill, cube_neigh, cube_radius } from './grid_algo';
 import { assert } from './util';
+import { TEAMS, PLAYERS } from './player';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
 /// ... milliseconds
@@ -269,6 +270,30 @@ export class Grid {
         this.filled.add(location);
     }
 
+    clearOwnedTrail(player: T.PlayerID, trail: Set<T.CubeLocation>) {
+        for (let location of trail) {
+            let cell = this.#queue[location] ?? this.#cells[location];
+            if (
+                cell !== undefined
+                && cell.state === T.CellState.TRAIL
+                && cell.ownerPlayerId === player
+            ) {
+                this.#queue[location] =
+                    cell.decaysIntoFilled
+                    ? {
+                        state: T.CellState.FILLED,
+                        location: cell.location,
+                        color: cell.color,
+                        age: CELL_FILLED_MAX_AGE_TICKS, // TODO[paulsn]?
+                    }
+                    : {
+                        state: T.CellState.BLANK,
+                        location: cell.location,
+                    };
+            }
+        }
+    }
+
     /// reduce decay for cells in a radius around player
     reviveAround(location: T.CubeLocation, color: T.Integer) {
         for (let pos of cube_radius(location, PLAYER_REVIVE_RADIUS)) {
@@ -412,9 +437,17 @@ export class Grid {
             if (typeof action === 'number') continue; // locationKey === '_count', actually unreachable
             if (action.state !== 'tombstone') continue; // TODO[paulsn] O(4N)
 
+            // BUG[paulsn] when annihilating decaysIntoTrail cells, do not blank
+            // them because this will distort the score
             let location = locationKey as T.CubeLocation;
             let annihilated = annihilate(location, interim);
-            console.log('[grid] annihilated!', annihilated.size);
+            if (annihilated.size === 0) continue;
+            // TODO align to tick
+            PLAYERS.broadcastGridEvent({
+                type: T.GridEventType.ANNIHILATE,
+                location,
+                affectedLocations: Array.from(annihilated),
+            });
             for (let pos of annihilated) {
                 delete interim[pos];
                 this.#updates![pos] = { state: T.CellState.BLANK };
@@ -437,6 +470,15 @@ export class Grid {
                         : cell.ownerPlayerId;
                     scorePerPlayer[owner] = (scorePerPlayer[owner] ?? 0) + 1;
                 }
+
+                let teamScore = TEAMS.applyFillScore(color, scorePerPlayer);
+                // TODO align to tick
+                PLAYERS.broadcastGridEvent({
+                    type: T.GridEventType.FILL,
+                    location: conn,
+                    affectedLocations: trail,
+                    teamScore,
+                });
 
                 // TODO[paulsn] not actually safe to use full annihilate here
                 // since it will also destroy opponents' trails that are only
@@ -548,6 +590,7 @@ const grid = new Grid();
 let tick = 0;
 setInterval(() => {
     tick = tick + 1;
+    TEAMS.startTick(tick);
     grid.commit(tick);
     if (tick % GRID_DECAY_PER_N_COMMIT_TICKS === 0) {
         grid.decay(tick);
@@ -556,6 +599,7 @@ setInterval(() => {
         grid.vacuum(tick);
     }
     grid.flush(tick);
+    TEAMS.endTick(tick);
 }, GRID_COMMIT_TICK_RATE);
 
 export default grid;
