@@ -88,3 +88,9 @@ export const ANIMALS = [
     'wolverine',
     'wombat',
 ];
+
+export function debug_log(format: string, ...args: any): void {
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(format, ...args);
+    }
+}
