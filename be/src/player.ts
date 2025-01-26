@@ -8,6 +8,11 @@ import { choose, ANIMALS, assert } from './util';
 const PLAYER_TRAIL_LENGTH = 8;
 const MAX_COLORS = 2;
 
+const CELLS_TO_SCORE = (cells: number): number => 4 + (cells - 4) ** 2;
+
+// TODO: logarithmic?
+const CELLS_TO_ENERGY = (cells: number): number => cells;
+
 export class Player {
     id: T.PlayerID;
     conn: WebSocket;
@@ -236,17 +241,6 @@ class Players {
 
 export const PLAYERS = new Players();
 
-function cellsToScore(cells: number): number {
-    let base = 4;
-    let extra = cells - 4;
-    return base + (extra ** 2);
-}
-
-function cellsToEnergy(cells: number): number {
-    // TODO logarithmic?
-    return cells;
-}
-
 class Teams {
     scores: Map<T.Color, T.Integer>;
     dirty: Set<T.Color>;
@@ -291,11 +285,11 @@ class Teams {
 
             let player = PLAYERS.getById(id);
             if (player) {
-                player.increaseEnergy(cellsToEnergy(cells));
+                player.increaseEnergy(CELLS_TO_ENERGY(cells));
             }
         }
 
-        this.addScore(team, cellsToScore(totalCells));
+        this.addScore(team, CELLS_TO_SCORE(totalCells));
     }
 }
 
