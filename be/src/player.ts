@@ -138,7 +138,7 @@ class Players {
             energy: PLAYER_TRAIL_LENGTH, // TODO[paulsn] do not hardcode
             score: 0, // TODO persistence?
         };
-        this.#nextColor = (this.#nextColor + 1) % 3;
+        this.#nextColor = (this.#nextColor + 1) % MAX_COLORS;
 
         let player = new Player(conn, state);
         this.#byWs.set(conn, player);
