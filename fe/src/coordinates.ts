@@ -36,7 +36,7 @@ const FLAT_GEOMETRY = new HexagonFlatGeometry();
 
 const RAISED_GEOMETRY = new HexagonFlatGeometry(0.5);
 
-export const PLAYING_RADIUS = 3;
+export const PLAYING_RADIUS = 30;
 
 export type CubeCoordStr = T.CubeLocation;
 
@@ -90,12 +90,25 @@ export class CellManager {
   }
 
   public subtractCube(a: CubeCoordinates, b: CubeCoordinates) {
-    return new CubeCoordinates(a.q - b.q, a.r - b.r, a.s - b.s)
+    return new CubeCoordinates(a.q - b.q, a.r - b.r, a.s - b.s);
   }
 
   public cubeDistance(a: CubeCoordinates, b: CubeCoordinates) {
     const sub = this.subtractCube(a, b);
     return (Math.abs(sub.q) + Math.abs(sub.r) + Math.abs(sub.s));
+  }
+
+  public offsetActiveCells(location: T.CubeLocation) {
+    this.currentCenter = location;
+
+    this.activeCells.forEach((cell, cellLocation) => {
+      this.scene.remove(cell);
+      this.activeCells.delete(cellLocation);
+    });
+
+    for_radius(this.currentCenter, PLAYING_RADIUS, (coord) => {
+      this.get_cell(coord.to_string())
+    })
   }
 }
 

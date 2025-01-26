@@ -21,11 +21,21 @@ SOCKET.init.then(
     console.log("socket init!");
     const p = x[0];
     rpm.spawn_client_player(p);
+    rpm.client_player?.move(coordinates.CubeCoordinates.from_string(p.location));
+    SOCKET.callbacks.onSelfUpdate = (player) => {
+      environment.cellManager.offsetActiveCells(player.location);
+    }
+
     SOCKET.callbacks.onCellUpdate = (coord, cell) => {
       environment.hexMap.setCell(coord.to_string(), cell);
     }
     const g = x[1];
     console.log(g);
+
+    for (let [locationKey, cell] of Object.entries(g)) {
+      let location = locationKey as T.CubeLocation;
+      environment.hexMap.setCell(location, cell)
+    }
   },
   (err) => {
     console.log("socket fail!", err)
