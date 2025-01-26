@@ -17,7 +17,11 @@ const inputManager = new InputManager(false);
 const hudManager = new HudManager();
 const rpm = new PlayerManager(environment.scene, inputManager);
 const connectUiManager = new ConnectUiManager();
-connectUiManager.playCallbacks.push(() => {
+connectUiManager.playCallbacks.push((name, color) => {
+  SOCKET.setName(name);
+  if (color !== undefined) {
+    SOCKET.setColor(color);
+  }
   inputManager.activated = true;
 });
 
@@ -38,6 +42,7 @@ SOCKET.init.then(
     );
     SOCKET.callbacks.onSelfUpdate = (player) => {
       environment.cellManager.offsetActiveCells(player.location);
+      connectUiManager.updatePlayerName(player.name);
       hudManager.setEnergy(player.energy);
     };
 
