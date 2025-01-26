@@ -24,7 +24,7 @@ export class PlayerManager {
   }
 
   public spawn_client_player(state: T.SelfPlayerState): void {
-    const player = new Player(state, true);
+    const player = new Player(state);
     this.scene.add(player);
     this.client_player = player;
     this.inputManager.directionCallbacks.push((e) =>
@@ -33,27 +33,34 @@ export class PlayerManager {
   }
 
   public spawnRemotePlayer(state: T.RemotePlayerState): void {
-    const player = new Player(state, false);
+    const player = new Player(state);
     this.remote_players.push(player);
     this.scene.add(player);
   }
 
   public updateRemotePlayer(state: T.RemotePlayerState): void {
     console.log(`got remote update: ${JSON.stringify(state)}`);
-    const player = this.remote_players.find((p) => p.id === state.id);
+    const player = this.remote_players.find(
+      (p) => p.remote_state.id === state.id,
+    );
     if (!player) {
       return;
     }
-    player.setLocation(state.location);
+    player.setRemoteState(state);
   }
 
   public despawnRemotePlayer(state: T.RemotePlayerState): void {
-    const player = this.remote_players.find((p) => p.id === state.id);
+    console.log(`got despawn color: ${JSON.stringify(state)}`);
+    const player = this.remote_players.find(
+      (p) => p.remote_state.id === state.id,
+    );
     if (!player) {
       return;
     }
     this.scene.remove(player);
-    this.remote_players = this.remote_players.filter((p) => p.id === state.id);
+    this.remote_players = this.remote_players.filter(
+      (p) => p.remote_state.id === state.id,
+    );
   }
 }
 
@@ -67,8 +74,8 @@ interface TransitionData {
 }
 
 export class Player extends THREE.Group {
-  remote_id: T.Integer;
-  color: T.Integer;
+  remote_state: T.RemotePlayerState;
+
   mesh: THREE.Group = new THREE.Group();
   cubepos: coordinates.CubeCoordinates;
 
@@ -79,19 +86,22 @@ export class Player extends THREE.Group {
   _transition: TransitionData | undefined;
 
   // TODO[paulsn] type discards energy information for client player
-  constructor(state: T.RemotePlayerState, playable: boolean) {
+  constructor(state: T.RemotePlayerState) {
     super();
     this.loadModel();
-    this.remote_id = state.id;
-    this.color = state.color;
+    this.remote_state = state;
     this.cubepos = coordinates.CubeCoordinates.from_string(state.location);
     this.mesh.position.y = 1;
     this.add(this.mesh);
+    this.updateObject();
 
     this.timer = new Timer();
     this.nextMoveTime = 0;
     this.currentMoveDelta = new coordinates.CubeCoordinates();
     this._transition = undefined;
+
+    this.setLocation(state.location);
+    this.setColor(state.color);
 
     requestAnimationFrame((e) => this.animate(e));
   }
@@ -228,10 +238,20 @@ export class Player extends THREE.Group {
     this.currentMoveDelta = newMoveDelta;
   }
 
-  public setLocation(position: T.CubeLocation) {
+  private setLocation(position: T.CubeLocation) {
+    // Trying to move to same location
+    if (position == this.cubepos.to_string()) return;
+
     this.cubepos = coordinates.CubeCoordinates.from_string(position);
     this.beginTransition(this.position, this.cubepos, this.timer.getElapsed());
-    // this.updateObject();
+  }
+
+  private setColor(color: T.Integer) {
+    console.log(`set player color: ${color}`);
+  }
+
+  private setName(name: string) {
+    console.log(`set player name: ${name}`);
   }
 
   public move(translation: coordinates.CubeCoordinates) {
@@ -239,7 +259,20 @@ export class Player extends THREE.Group {
     SOCKET.setLocation(this.cubepos.to_string());
   }
 
-  public static remote_spawn(state: T.RemotePlayerState): void {}
-
-  public remote_move(state: T.RemotePlayerState): void {}
+  public setRemoteState(state: T.RemotePlayerState) {
+    // If location is different, start move animation
+    const new_location = state.location;
+    if (new_location != this.cubepos.to_string()) {
+      this.setLocation(new_location);
+    }
+    // If color is different, change color
+    if (state.color != this.remote_state.color) {
+      this.setColor(state.color);
+    }
+    // If name is different, rebuild name tag
+    if (state.name != this.remote_state.name) {
+      this.setName(state.name);
+    }
+    this.remote_state = state;
+  }
 }

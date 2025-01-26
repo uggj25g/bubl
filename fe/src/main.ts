@@ -37,14 +37,17 @@ SOCKET.init.then(
     console.log("socket init!");
     const p = x[0];
     rpm.spawn_client_player(p);
-    rpm.client_player?.move(
-      coordinates.CubeCoordinates.from_string(p.location),
-    );
     SOCKET.callbacks.onSelfUpdate = (player) => {
+      // TODO(dankons): this should be a player move callback instead
       environment.cellManager.offsetActiveCells(player.location);
       connectUiManager.updatePlayerName(player.name);
       hudManager.setEnergy(player.energy);
     };
+
+    // Spawn in existing remote players
+    for (const [_, p] of SOCKET.players) {
+      rpm.spawnRemotePlayer(p);
+    }
 
     SOCKET.callbacks.onCellUpdate = (coord, cell) => {
       environment.hexMap.setCell(coord.to_string(), cell);
