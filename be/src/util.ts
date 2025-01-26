@@ -1,6 +1,10 @@
+const UNSAFE_DO_NOT_CRASH_ON_ASSERT_FAILURE = false;
+
 export function assert(val: boolean): asserts val {
     if (val !== true) {
-        throw new Error('assertion failed');
+        if ( ! UNSAFE_DO_NOT_CRASH_ON_ASSERT_FAILURE) {
+            throw new Error('assertion failed');
+        }
     }
 }
 

@@ -100,7 +100,7 @@ class Players {
         let id;
         do {
             id = Math.abs(Math.random() * scale) | 0;
-        } while (this.#byId.has(id));
+        } while (this.#byId.has(id) && id !== 0);
         return id;
     }
 
