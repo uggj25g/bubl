@@ -1,27 +1,42 @@
 //#region Scaffolding
 
-export type ProtocolVersion = 5;
-export const PROTOCOL_VERSION = 5 as ProtocolVersion;
+export type ProtocolVersion = 6;
+export const PROTOCOL_VERSION = 6 as ProtocolVersion;
 
 export enum MessageType {
     INIT = "INIT",
-    UPDATE = "UPDATE",
+    UPDATE_GRID = "UPDATE_GRID",
+    UPDATE_PLAYER = "UPDATE_PLAYER",
+    GRID_EVENT = "GRID_EVENT",
 
     MOVE = "MOVE",
+    RENAME = "RENAME",
 }
-export type ServerMessageType = MessageType.INIT | MessageType.UPDATE;
-export type ClientMessageType = MessageType.MOVE;
+export type ServerMessageType =
+    MessageType.INIT
+    | MessageType.UPDATE_GRID
+    | MessageType.UPDATE_PLAYER
+    | MessageType.GRID_EVENT;
+export type ClientMessageType =
+    MessageType.MOVE
+    | MessageType.RENAME;
 
 export function isValidClientMessageType(val: any): val is ClientMessageType {
-    return (typeof val === "string") && val === MessageType.MOVE;
+    return (typeof val === "string") && (
+        val === MessageType.MOVE
+        || val === MessageType.RENAME
+    );
 }
 
 export type ServerMessage =
     [MessageType.INIT, InitMessage]
-    | [MessageType.UPDATE, UpdateMessage];
+    | [MessageType.UPDATE_GRID, UpdateGridMessage]
+    | [MessageType.UPDATE_PLAYER, UpdatePlayerMessage]
+    | [MessageType.GRID_EVENT, GridEventMessage];
 
 export type ClientMessage =
-    [MessageType.MOVE, MoveMessage];
+    [MessageType.MOVE, MoveMessage]
+    | [MessageType.RENAME, RenameMessage];
 
 //#endregion
 
@@ -33,15 +48,26 @@ export type InitMessage = {
     others: Array<RemotePlayerState>,
     grid: CompressedCellGrid,
 }
-export type UpdateMessage = {
-    self: SelfPlayerState
-    others: Array<RemotePlayerState>,
-
+export type UpdatePlayerMessage = {
+    id: PlayerID;
+    state: SelfPlayerState | RemotePlayerState | null;
+}
+export type UpdateGridMessage = {
     /// contains only changes since previous update message, not the full grid
     gridDiff: CompressedCellGrid,
 }
+export type GridEventMessage = {
+    type: GridEventType,
+    location: CubeLocation,
+    player: PlayerID,
+    score: Integer,
+}
+
 export type MoveMessage = {
     location: CubeLocation,
+}
+export type RenameMessage = {
+    name: string,
 }
 
 //#endregion
@@ -59,11 +85,13 @@ export const cube_eq = (a: CubeLocation, b: CubeLocation) => a === b;
 export type PlayerID = Integer;
 export type RemotePlayerState = {
     id: PlayerID,
+    name: string,
     color: Integer,
     location: CubeLocation,
 };
 export type SelfPlayerState = RemotePlayerState & {
     energy: Integer,
+    score: Integer,
 };
 
 export enum CellState {
@@ -109,6 +137,11 @@ export type CellFilled = CellCommon & {
 export type Cell = CellBlank | CellTrail | CellFilled;
 
 export type CellGrid = Record<CubeLocation, Cell>;
+
+export enum GridEventType {
+    FILL = "FILL",
+    ANNIHILATE = "ANNIHILATE",
+}
 
 //#endregion
 

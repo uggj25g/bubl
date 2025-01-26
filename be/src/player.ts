@@ -3,13 +3,15 @@ import * as T from '../../types';
 
 import GRID from './grid';
 import { send } from './index';
+import { choose, ANIMALS, assert } from './util';
 
 const PLAYER_TRAIL_LENGTH = 8;
 
 export class Player {
     id: T.PlayerID;
     conn: WebSocket;
-    state: T.SelfPlayerState;
+    /// null if disconnected
+    state: T.SelfPlayerState | null;
     decayTrail: Set<T.CubeLocation>;
 
     constructor(conn: WebSocket, state: T.SelfPlayerState) {
@@ -25,7 +27,8 @@ export class Player {
         this.conn.removeListener('message', this.handleMessageBase);
     }
 
-    get remoteState(): T.RemotePlayerState {
+    get remoteState(): T.RemotePlayerState | null {
+        if (this.state === null) return null;
         let state: T.RemotePlayerState & { energy?: T.SelfPlayerState["energy"] } = { ...this.state };
         delete state.energy;
         return state;
@@ -49,9 +52,11 @@ export class Player {
         console.log('[%d msg] %o', this.id, msg);
         switch (msg[0]) {
         case T.MessageType.MOVE: return this.handleMove(msg[1]);
+        case T.MessageType.RENAME: return this.handleRename(msg[1]);
         }
     }
     handleMove(msg: T.MoveMessage) {
+        assert(this.state !== null);
         const { location } = msg;
         this.state.location = location;
 
@@ -65,7 +70,13 @@ export class Player {
         GRID.reviveAround(location, this.state.color);
         this.decayTrail.add(location);
 
-        PLAYERS.broadcastPlayerUpdate();
+        PLAYERS.broadcastPlayerUpdate(this);
+    }
+    handleRename(msg: T.RenameMessage) {
+        assert(this.state !== null);
+        const { name } = msg;
+        this.state.name = name;
+        PLAYERS.broadcastPlayerUpdate(this);
     }
 }
 
@@ -101,9 +112,11 @@ class Players {
         let id = this.#id();
         let state: T.SelfPlayerState = {
             id: id,
+            name: choose(ANIMALS),
             color: this.#nextColor, // TODO[paulsn] assign random
             location: '0,0,0', // TODO[paulsn] assign random
             energy: PLAYER_TRAIL_LENGTH, // TODO[paulsn] do not hardcode
+            score: 0, // TODO persistence?
         };
         this.#nextColor = (this.#nextColor + 1) % 3;
 
@@ -116,56 +129,59 @@ class Players {
         conn.once('close', () => {
             this.#byWs.delete(conn);
             this.#byId.delete(id);
-            this.broadcastPlayerUpdate();
+            player.state = null;
+            this.broadcastPlayerUpdate(player);
             console.log('[%d disconnect]', id);
             player.dispose();
         });
 
         let otherPlayers = Array.from(this.#byId.values())
-            .filter(p => p.id !== player.id)
-            .map(p => p.remoteState);
+            .filter(p => p.id !== player.id && p.state !== null)
+            .map(p => p.remoteState!);
 
         send(player.conn, [
             T.MessageType.INIT,
             {
                 protocolVersion: T.PROTOCOL_VERSION,
-                self: player.state,
+                self: player.state!,
                 others: otherPlayers,
                 grid: T.compressGrid(GRID.cellGrid),
             },
         ]);
 
-        this.broadcastPlayerUpdate(new Set([player]));
+        this.broadcastPlayerUpdate(player, true);
 
         return player;
     }
 
-    broadcastPlayerUpdate(except?: Set<Player>) {
-        except ??= new Set();
-
+    broadcastPlayerUpdate(subject: Player, excludeSelf: boolean = false) {
+        let state = subject.remoteState;
+        if (!state) return;
+        const msg: T.UpdatePlayerMessage = {
+            id: subject.id,
+            state,
+        };
         for (let [ws, player] of this.#byWs.entries()) {
-            if (except.has(player)) continue;
-            const msg: T.UpdateMessage = {
-                self: player.state,
-                others: Array.from(this.#byId.values())
-                    .filter(p => p.id !== player.id)
-                    .map(p => p.remoteState),
-                gridDiff: [],
+            if (player === subject) {
+                if (excludeSelf) continue;
+                assert(player.state !== null);
+                const ownMsg: T.UpdatePlayerMessage = {
+                    id: player.id,
+                    state: player.state,
+                };
+                send(ws, [T.MessageType.UPDATE_PLAYER, ownMsg]);
+            } else {
+                send(ws, [T.MessageType.UPDATE_PLAYER, msg]);
             }
-            send(ws, [T.MessageType.UPDATE, msg]);
         }
     }
 
     broadcastGridUpdate(diff: T.CellGrid) {
-        for (let [ws, player] of this.#byWs.entries()) {
-            const msg: T.UpdateMessage = {
-                self: player.state,
-                others: Array.from(this.#byId.values())
-                    .filter(p => p.id !== player.id)
-                    .map(p => p.remoteState),
+        for (let ws of this.#byWs.keys()) {
+            const msg: T.UpdateGridMessage = {
                 gridDiff: T.compressGrid(diff),
             };
-            send(ws, [T.MessageType.UPDATE, msg]);
+            send(ws, [T.MessageType.UPDATE_GRID, msg]);
         }
     }
 }

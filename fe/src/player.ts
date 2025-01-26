@@ -19,7 +19,7 @@ export class PlayerManager {
     this.inputManager = inputManager;
 
     SOCKET.callbacks.onPlayerSpawn = (e) => this.spawnRemotePlayer(e);
-    SOCKET.callbacks.onPlayerMove = (e) => this.updateRemotePlayer(e);
+    SOCKET.callbacks.onPlayerUpdate = (e) => this.updateRemotePlayer(e);
     SOCKET.callbacks.onPlayerDespawn = (e) => this.despawnRemotePlayer(e);
   }
 

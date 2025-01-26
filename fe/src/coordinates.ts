@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import * as T from '../../types';
-import Queue from "yocto-queue";
 import { HexagonFlatGeometry, HexagonMesh } from "./visual/hegaxon/flat";
 
 
