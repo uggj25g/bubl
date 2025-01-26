@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 :root {
   font-family: 'Source Code Pro', 'SF Mono', 'Consolas', monospace;
 }
@@ -25,6 +29,7 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
 }
 
 #connectui {
@@ -129,7 +134,7 @@ body {
 
 .hud-nametag {
   font-size: 1rem;
-  font-weight: 600; 
+  font-weight: 600;
   text-align: center;
 }
 
@@ -145,7 +150,7 @@ body {
 
 .hud-gridevent {
   font-size: 2rem;
-  font-weight: 600; 
+  font-weight: 600;
   text-align: center;
   color: white;
   text-shadow: 0px 0px 5px #000000;
@@ -163,7 +168,17 @@ body {
 
 .hud-gridevent-annihilate {
   font-size: 1rem;
-  font-weight: 400; 
+  font-weight: 400;
   color: #ff8000;
   text-shadow: 0px -1px 10px #ff0000, 0px 2px 5px #000000;
+}
+
+.bubl {
+  display: inline-block;
+  height: 1.2em;
+  vertical-align: top;
+  color: rgba(255, 255, 255, 0);
+  background-image: url(../bubl.webp);
+  background-size: cover;
+  aspect-ratio: 1047 / 512;
 }
