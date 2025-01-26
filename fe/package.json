@@ -17,7 +17,6 @@
   "dependencies": {
     "@types/three": "^0.172.0",
     "jeasings": "^0.0.16",
-    "three": "^0.172.0",
-    "yocto-queue": "^1.1.1"
+    "three": "^0.172.0"
   }
 }

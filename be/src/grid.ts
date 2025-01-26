@@ -1,5 +1,6 @@
 import * as T from '../../types';
 import { annihilate, fill, cube_neigh, cube_radius } from './grid_algo';
+import { assert } from './util';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
 /// ... milliseconds
@@ -111,6 +112,7 @@ export type GCellTombstone = {
     location: CubeLocation,
     state: 'tombstone',
     originalColor: T.Integer,
+    lastPlayer: T.PlayerID,
 };
 export type GCellRevive = {
     location: CubeLocation,
@@ -217,6 +219,7 @@ export class Grid {
                     state: 'tombstone',
                     location: str_cube(location),
                     originalColor: current.color!,
+                    lastPlayer: ownerPlayerId,
                 };
             }
             break;
@@ -371,6 +374,7 @@ export class Grid {
                     state: 'tombstone',
                     location: existing.location,
                     originalColor: existing.color,
+                    lastPlayer: action.ownerPlayerId,
                 };
                 continue;
             }
@@ -423,13 +427,32 @@ export class Grid {
         for (let [conn, color] of potentialConnections) {
             let trail = fill(conn, color, interim);
             if (trail !== null) {
+                // 0 represents prefilled cells that don't contribute to score
+                let scorePerPlayer = Object.create(null) as Record<T.PlayerID, T.Integer>;
+                for (let pos of trail) {
+                    let cell = interim[pos];
+                    assert(cell.state === T.CellState.TRAIL && cell.color === color);
+                    let owner = cell.decaysIntoFilled
+                        ? 0
+                        : cell.ownerPlayerId;
+                    scorePerPlayer[owner] = (scorePerPlayer[owner] ?? 0) + 1;
+                }
+
                 // TODO[paulsn] not actually safe to use full annihilate here
                 // since it will also destroy opponents' trails that are only
                 // touching due to its flood fill nature
+                // EMERGENT: ... or maybe that's actually a feature?
                 for (let pos of annihilate(conn, interim)) {
+                    let cell = interim[pos];
+                    assert(cell.state === T.CellState.TRAIL);
+                    if (
+                        cell.color === color
+                        && cell.decaysIntoFilled
+                    )
                     delete interim[pos];
                     this.#updates![pos] = { state: T.CellState.BLANK };
                 }
+
                 for (let pos of trail) {
                     interim[pos] = {
                         state: T.CellState.FILLED,
