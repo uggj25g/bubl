@@ -270,6 +270,30 @@ export class Grid {
         this.filled.add(location);
     }
 
+    clearOwnedTrail(player: T.PlayerID, trail: Set<T.CubeLocation>) {
+        for (let location of trail) {
+            let cell = this.#queue[location] ?? this.#cells[location];
+            if (
+                cell !== undefined
+                && cell.state === T.CellState.TRAIL
+                && cell.ownerPlayerId === player
+            ) {
+                this.#queue[location] =
+                    cell.decaysIntoFilled
+                    ? {
+                        state: T.CellState.FILLED,
+                        location: cell.location,
+                        color: cell.color,
+                        age: CELL_FILLED_MAX_AGE_TICKS, // TODO[paulsn]?
+                    }
+                    : {
+                        state: T.CellState.BLANK,
+                        location: cell.location,
+                    };
+            }
+        }
+    }
+
     /// reduce decay for cells in a radius around player
     reviveAround(location: T.CubeLocation, color: T.Integer) {
         for (let pos of cube_radius(location, PLAYER_REVIVE_RADIUS)) {

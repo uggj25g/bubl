@@ -164,12 +164,7 @@ class Players {
         console.log('[%d connect]', id);
 
         conn.once('close', () => {
-            this.#byWs.delete(conn);
-            this.#byId.delete(id);
-            player.state = null;
-            this.broadcastPlayerUpdate(player);
-            console.log('[%d disconnected]', id);
-            player.dispose();
+            this.disconnect(player, true);
         });
 
         let otherPlayers = Array.from(this.#byId.values())
@@ -192,13 +187,16 @@ class Players {
         return player;
     }
 
-    disconnect(player: Player) {
+    disconnect(player: Player, graceful: boolean = false) {
         this.#byId.delete(player.id);
         this.#byWs.delete(player.conn);
-        player.conn.close();
+        if ( ! graceful) {
+            player.conn.close();
+        }
         player.state = null;
+        GRID.clearOwnedTrail(player.id, player.decayTrail);
         this.broadcastPlayerUpdate(player, true);
-        console.log('[%d force disconnect]', player.id);
+        console.log('[%d %sdisconnect]', player.id, graceful ? '' : 'force ');
         player.dispose();
     }
 
