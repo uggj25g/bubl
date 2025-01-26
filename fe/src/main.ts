@@ -32,6 +32,17 @@ coordinates.for_radius(T.cube(0, 0, 0), coordinates.PLAYING_RADIUS, (coord) => {
   hexes.push(environment.cellManager.get_cell(coord.to_string()));
 });
 
+function _onTeamState(teamState: T.TeamState[]) {
+  const redState = teamState.find((e) => e.color === 0);
+  const blueState = teamState.find((e) => e.color === 1);
+  if (redState) {
+    hudManager.setRedScore(redState.score);
+  }
+  if (blueState) {
+    hudManager.setBlueScore(blueState.score);
+  }
+}
+
 SOCKET.init.then(
   (x) => {
     console.log("socket init!");
@@ -47,6 +58,11 @@ SOCKET.init.then(
       hudManager.setEnergy(player.energy);
       rpm.client_player?.setRemoteState(player);
     };
+
+    for (const [_, t] of SOCKET.teams) {
+      _onTeamState([t]);
+    }
+    SOCKET.callbacks.onTeamsUpdate = _onTeamState;
 
     // Spawn in existing remote players
     for (const [_, p] of SOCKET.players) {
