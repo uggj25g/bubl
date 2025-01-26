@@ -78,10 +78,6 @@ function onMouseMove(event: MouseEvent) {
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 }
 
-function isVisualCell(t: any): t is coordinates.VisualCell {
-  return typeof t.setHover === "function";
-}
-
 function animate() {
   requestAnimationFrame(animate);
 
