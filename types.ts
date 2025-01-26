@@ -11,6 +11,7 @@ export enum MessageType {
 
     MOVE = "MOVE",
     RENAME = "RENAME",
+    CHANGE_COLOR = "CHANGE_COLOR",
 }
 export type ServerMessageType =
     MessageType.INIT
@@ -19,7 +20,8 @@ export type ServerMessageType =
     | MessageType.GRID_EVENT;
 export type ClientMessageType =
     MessageType.MOVE
-    | MessageType.RENAME;
+    | MessageType.RENAME
+    | MessageType.CHANGE_COLOR;
 
 export function isValidClientMessageType(val: any): val is ClientMessageType {
     return (typeof val === "string") && (
@@ -36,7 +38,8 @@ export type ServerMessage =
 
 export type ClientMessage =
     [MessageType.MOVE, MoveMessage]
-    | [MessageType.RENAME, RenameMessage];
+    | [MessageType.RENAME, RenameMessage]
+    | [MessageType.CHANGE_COLOR, ChangeColorMessage];
 
 //#endregion
 
@@ -68,6 +71,10 @@ export type MoveMessage = {
 }
 export type RenameMessage = {
     name: string,
+}
+/// Valid only before movement started
+export type ChangeColorMessage = {
+    color: Integer,
 }
 
 //#endregion

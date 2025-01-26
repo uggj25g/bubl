@@ -29,7 +29,18 @@ export const SOCKET = {
     /// sends a request to set new location to server
     /// SOCKET.self will not be updated until acknowledged by server
     setLocation(location: T.CubeLocation) {
-        let msg = [T.MessageType.MOVE, { location }];
+        let msg: T.ClientMessage = [T.MessageType.MOVE, { location }];
+        SOCKET.conn.send(JSON.stringify(msg));
+    },
+
+    setName(name: string) {
+        let msg: T.ClientMessage = [T.MessageType.RENAME, { name }];
+        SOCKET.conn.send(JSON.stringify(msg));
+    },
+
+    /// only valid before any calls to setLocation, otherwise server will kick
+    setColor(color: T.Integer) {
+        let msg: T.ClientMessage = [T.MessageType.CHANGE_COLOR, { color }];
         SOCKET.conn.send(JSON.stringify(msg));
     },
 

@@ -6,6 +6,7 @@ import { send } from './index';
 import { choose, ANIMALS, assert } from './util';
 
 const PLAYER_TRAIL_LENGTH = 8;
+const MAX_COLORS = 2;
 
 export class Player {
     id: T.PlayerID;
@@ -13,12 +14,14 @@ export class Player {
     /// null if disconnected
     state: T.SelfPlayerState | null;
     decayTrail: Set<T.CubeLocation>;
+    hasMoved: boolean;
 
     constructor(conn: WebSocket, state: T.SelfPlayerState) {
         this.conn = conn;
         this.state = state;
         this.id = state.id;
         this.decayTrail = new Set();
+        this.hasMoved = false;
 
         this.handleMessageBase = this.handleMessageBase.bind(this);
         this.conn.on('message', this.handleMessageBase);
@@ -53,6 +56,7 @@ export class Player {
         switch (msg[0]) {
         case T.MessageType.MOVE: return this.handleMove(msg[1]);
         case T.MessageType.RENAME: return this.handleRename(msg[1]);
+        case T.MessageType.CHANGE_COLOR: return this.handleChangeColor(msg[1]);
         }
     }
     handleMove(msg: T.MoveMessage) {
@@ -76,6 +80,22 @@ export class Player {
         assert(this.state !== null);
         const { name } = msg;
         this.state.name = name;
+        PLAYERS.broadcastPlayerUpdate(this);
+    }
+    handleChangeColor(msg: T.ChangeColorMessage) {
+        assert(this.state !== null);
+        if (this.hasMoved) {
+            console.log('[%d msg] change color DENIED: movement already happened', this.id);
+            PLAYERS.disconnect(this);
+            return;
+        }
+        if (msg.color >= MAX_COLORS) {
+            console.log('[%d msg] change color DENIED: color %d out of bounds', this.id, msg.color);
+            PLAYERS.disconnect(this);
+            return;
+        }
+
+        this.state!.color = msg.color;
         PLAYERS.broadcastPlayerUpdate(this);
     }
 }
@@ -131,7 +151,7 @@ class Players {
             this.#byId.delete(id);
             player.state = null;
             this.broadcastPlayerUpdate(player);
-            console.log('[%d disconnect]', id);
+            console.log('[%d disconnected]', id);
             player.dispose();
         });
 
@@ -152,6 +172,16 @@ class Players {
         this.broadcastPlayerUpdate(player, true);
 
         return player;
+    }
+
+    disconnect(player: Player) {
+        this.#byId.delete(player.id);
+        this.#byWs.delete(player.conn);
+        player.conn.close();
+        player.state = null;
+        this.broadcastPlayerUpdate(player, true);
+        console.log('[%d force disconnect]', player.id);
+        player.dispose();
     }
 
     broadcastPlayerUpdate(subject: Player, excludeSelf: boolean = false) {
