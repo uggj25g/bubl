@@ -98,7 +98,6 @@ export type RemotePlayerState = {
 };
 export type SelfPlayerState = RemotePlayerState & {
     energy: Integer,
-    score: Integer,
 };
 
 export enum CellState {
