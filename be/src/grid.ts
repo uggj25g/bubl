@@ -445,10 +445,6 @@ export class Grid {
                 for (let pos of annihilate(conn, interim)) {
                     let cell = interim[pos];
                     assert(cell.state === T.CellState.TRAIL);
-                    if (
-                        cell.color === color
-                        && cell.decaysIntoFilled
-                    )
                     delete interim[pos];
                     this.#updates![pos] = { state: T.CellState.BLANK };
                 }
