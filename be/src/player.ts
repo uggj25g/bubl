@@ -37,6 +37,20 @@ export class Player {
         return state;
     }
 
+    increaseEnergy(amount: number) {
+        assert(this.state !== null);
+        this.state!.energy += amount;
+        this.sendState();
+    }
+
+    sendState() {
+        const ownMsg: T.UpdatePlayerMessage = {
+            id: this.id,
+            state: this.state,
+        };
+        send(this.conn, [T.MessageType.UPDATE_PLAYER, ownMsg]);
+    }
+
     handleMessageBase(rawMsg: any, isBinary: boolean) {
         if (isBinary) return;
         let strMsg = rawMsg.toString('utf8');
@@ -128,6 +142,10 @@ class Players {
         return Array.from(this.#byId.values());
     }
 
+    getById(id: T.PlayerID): Player | undefined {
+        return this.#byId.get(id);
+    }
+
     spawn(conn: WebSocket): Player {
         let id = this.#id();
         let state: T.SelfPlayerState = {
@@ -193,12 +211,7 @@ class Players {
         for (let [ws, player] of this.#byWs.entries()) {
             if (player === subject) {
                 if (excludeSelf) continue;
-                assert(player.state !== null);
-                const ownMsg: T.UpdatePlayerMessage = {
-                    id: player.id,
-                    state: player.state,
-                };
-                send(ws, [T.MessageType.UPDATE_PLAYER, ownMsg]);
+                player.sendState();
             } else {
                 send(ws, [T.MessageType.UPDATE_PLAYER, msg]);
             }
@@ -206,13 +219,81 @@ class Players {
     }
 
     broadcastGridUpdate(diff: T.CellGrid) {
+        const msg: T.UpdateGridMessage = {
+            gridDiff: T.compressGrid(diff),
+        };
         for (let ws of this.#byWs.keys()) {
-            const msg: T.UpdateGridMessage = {
-                gridDiff: T.compressGrid(diff),
-            };
             send(ws, [T.MessageType.UPDATE_GRID, msg]);
+        }
+    }
+
+    broadcastTeamUpdate(teams: T.TeamState[]) {
+        const msg: T.UpdateTeamsMessage = { teams };
+        for (let ws of this.#byWs.keys()) {
+            send(ws, [T.MessageType.UPDATE_TEAMS, msg]);
         }
     }
 }
 
 export const PLAYERS = new Players();
+
+function cellsToScore(cells: number): number {
+    let base = 4;
+    let extra = cells - 4;
+    return base + (extra ** 2);
+}
+
+function cellsToEnergy(cells: number): number {
+    // TODO logarithmic?
+    return cells;
+}
+
+class Teams {
+    scores: Map<T.Color, T.Integer>;
+    dirty: Set<T.Color>;
+
+    constructor() {
+        this.scores = new Map();
+        this.dirty = new Set();
+    }
+
+    getScore(team: T.Color) {
+        return this.scores.get(team) ?? 0;
+    }
+    addScore(team: T.Color, amount: T.Integer) {
+        this.scores.set(team, this.getScore(team) + amount);
+        this.dirty.add(team);
+    }
+
+    startTick(_tick: number) {
+        //
+    }
+    endTick(_tick: number) {
+        if (this.dirty.size) {
+            let teams = [] as T.TeamState[];
+            for (let color of this.dirty.values()) {
+                teams.push({ color, score: this.getScore(color) });
+            }
+            PLAYERS.broadcastTeamUpdate(teams);
+            this.dirty.clear();
+        }
+    }
+
+    applyFillScore(team: T.Color, playerContributions: Record<T.PlayerID, T.Integer>) {
+        let totalCells = 0;
+        for (let [idKey, cells] of Object.entries(playerContributions)) {
+            let id = Number(idKey) as T.Integer;
+            if (id === 0) continue;
+            totalCells += cells;
+
+            let player = PLAYERS.getById(id);
+            if (player) {
+                player.increaseEnergy(cellsToEnergy(cells));
+            }
+        }
+
+        this.addScore(team, cellsToScore(totalCells));
+    }
+}
+
+export const TEAMS = new Teams();

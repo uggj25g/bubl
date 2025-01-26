@@ -1,6 +1,7 @@
 import * as T from '../../types';
 import { annihilate, fill, cube_neigh, cube_radius } from './grid_algo';
 import { assert } from './util';
+import { TEAMS } from './player';
 
 /// Grid will perform a Commit Tick (commit all queued changes) every
 /// ... milliseconds
@@ -412,6 +413,8 @@ export class Grid {
             if (typeof action === 'number') continue; // locationKey === '_count', actually unreachable
             if (action.state !== 'tombstone') continue; // TODO[paulsn] O(4N)
 
+            // BUG[paulsn] when annihilating decaysIntoTrail cells, do not blank
+            // them because this will distort the score
             let location = locationKey as T.CubeLocation;
             let annihilated = annihilate(location, interim);
             console.log('[grid] annihilated!', annihilated.size);
@@ -437,6 +440,8 @@ export class Grid {
                         : cell.ownerPlayerId;
                     scorePerPlayer[owner] = (scorePerPlayer[owner] ?? 0) + 1;
                 }
+
+                TEAMS.applyFillScore(color, scorePerPlayer);
 
                 // TODO[paulsn] not actually safe to use full annihilate here
                 // since it will also destroy opponents' trails that are only
@@ -548,6 +553,7 @@ const grid = new Grid();
 let tick = 0;
 setInterval(() => {
     tick = tick + 1;
+    TEAMS.startTick(tick);
     grid.commit(tick);
     if (tick % GRID_DECAY_PER_N_COMMIT_TICKS === 0) {
         grid.decay(tick);
@@ -556,6 +562,7 @@ setInterval(() => {
         grid.vacuum(tick);
     }
     grid.flush(tick);
+    TEAMS.endTick(tick);
 }, GRID_COMMIT_TICK_RATE);
 
 export default grid;
