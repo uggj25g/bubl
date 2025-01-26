@@ -90,7 +90,7 @@ body {
 #scorebar-red {
   background-color: #FF0000;
   height: 1rem;
-  width: 50%;
+  width: 150px;
   border-top-left-radius: 1rem;
   border-bottom-left-radius: 1rem;
 }
@@ -98,7 +98,7 @@ body {
 #scorebar-blue {
   background-color: #0080ff;
   height: 1rem;
-  width: 50%;
+  width: 150px;
   border-top-right-radius: 1rem;
   border-bottom-right-radius: 1rem;
 }
