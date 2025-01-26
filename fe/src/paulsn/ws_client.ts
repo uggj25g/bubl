@@ -24,6 +24,8 @@ export const SOCKET = {
     // TODO[paulsn] event bus/observer pattern?
     players: new Map<T.PlayerID, T.RemotePlayerState>(),
 
+    teams: new Map<T.Color, T.TeamState>(),
+
     handlers: Object.create(null) as Handlers,
 
     /// sends a request to set new location to server
@@ -53,6 +55,8 @@ export interface Callbacks {
     onPlayerDespawn?(state: T.RemotePlayerState): void;
     onPlayerUpdate?(state: T.RemotePlayerState): void;
     onCellUpdate?(location: CubeCoordinates, data: T.Cell): void;
+    onTeamsUpdate?(teams: T.TeamState[]): void;
+    onConnectionLost?(): void;
 }
 
 export default SOCKET;
@@ -80,6 +84,7 @@ window.SOCKET = SOCKET;
     };
     SOCKET.conn.onclose = () => {
         console.warn('[ws] connection closed');
+        SOCKET.callbacks.onConnectionLost?.();
     };
 
     SOCKET.handlers[T.MessageType.INIT] = (msg_) => {
@@ -164,5 +169,15 @@ window.SOCKET = SOCKET;
         lastState.location = state.location;
         SOCKET.callbacks.onPlayerUpdate?.(lastState);
     };
+
+    SOCKET.handlers[T.MessageType.UPDATE_TEAMS] = (msg_) => {
+        let msg = msg_[1] as T.UpdateTeamsMessage;
+
+        for (let team of msg.teams) {
+            SOCKET.teams.set(team.color, team);
+        }
+
+        SOCKET.callbacks.onTeamsUpdate?.(msg.teams);
+    }
 }
 

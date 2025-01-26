@@ -18,7 +18,8 @@ export type ServerMessageType =
     MessageType.INIT
     | MessageType.UPDATE_GRID
     | MessageType.UPDATE_PLAYER
-    | MessageType.GRID_EVENT;
+    | MessageType.GRID_EVENT
+    | MessageType.UPDATE_TEAMS;
 export type ClientMessageType =
     MessageType.MOVE
     | MessageType.RENAME
